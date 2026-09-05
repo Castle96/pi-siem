@@ -24,22 +24,267 @@ html, body, #root {
   overflow-x: hidden;
 }
 
+/* ── Ambient grid background ── */
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--iron-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--iron-grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  animation: gridPulse 8s ease-in-out infinite;
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+/* ── Scanlines overlay ── */
 .global-scanlines {
   position: fixed;
   inset: 0;
   background: repeating-linear-gradient(
     0deg,
-    rgba(0, 229, 255, 0.04) 0px,
-    rgba(0, 229, 255, 0.04) 1px,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
     transparent 1px,
-    transparent 4px
+    transparent 3px
   );
   pointer-events: none;
   z-index: 9999;
-  animation: scan 10s linear infinite;
+  mix-blend-mode: overlay;
+  animation: scan 8s linear infinite;
 }
 
 @keyframes scan {
   from { background-position-y: 0; }
   to { background-position-y: 100%; }
+}
+
+/* ── Flicker effect ── */
+.flicker {
+  animation: flicker 5s infinite;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  3% { opacity: 0.85; }
+  6% { opacity: 1; }
+  7% { opacity: 0.9; }
+  10% { opacity: 1; }
+  70% { opacity: 1; }
+  71% { opacity: 0.95; }
+  72% { opacity: 1; }
+}
+
+/* ── CRT vignette ── */
+#root::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ── Border glow animations ── */
+@keyframes borderPulse {
+  0%, 100% { border-color: rgba(0, 229, 255, 0.2); }
+  50% { border-color: rgba(0, 229, 255, 0.4); }
+}
+
+@keyframes borderPulseMagenta {
+  0%, 100% { border-color: rgba(255, 42, 109, 0.2); }
+  50% { border-color: rgba(255, 42, 109, 0.4); }
+}
+
+/* ── Corner bracket pulse ── */
+@keyframes cornerPulse {
+  0%, 100% {
+    border-color: rgba(0, 229, 255, 0.4);
+    box-shadow: 0 0 4px rgba(0, 229, 255, 0.2);
+  }
+  50% {
+    border-color: rgba(0, 229, 255, 0.8);
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+  }
+}
+
+/* ── Header glow pulse ── */
+@keyframes headerGlow {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(0, 229, 255, 0.9), 0 0 40px rgba(0, 229, 255, 0.3);
+  }
+}
+
+/* ── Floating particles ── */
+#particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--iron-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 6px var(--iron-cyan);
+  animation: floatUp linear infinite;
+  opacity: 0.6;
+}
+
+@keyframes floatUp {
+  0% {
+    transform: translateY(100vh) translateX(0);
+    opacity: 0;
+  }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% {
+    transform: translateY(-100px) translateX(40px);
+    opacity: 0;
+  }
+}
+
+/* ── Glitch text effect ── */
+@keyframes glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-1px, 1px); }
+  40% { transform: translate(1px, -1px); }
+  60% { transform: translate(-1px, -1px); }
+  80% { transform: translate(1px, 1px); }
+}
+
+.glitch-text:hover {
+  animation: glitch 0.3s infinite;
+  text-shadow: 2px 0 var(--iron-magenta), -2px 0 var(--iron-cyan);
+}
+
+/* ── Alert pulse ── */
+@keyframes alertPulse {
+  0%, 100% {
+    background-color: rgba(255, 42, 109, 0.1);
+    box-shadow: 0 0 5px rgba(255, 42, 109, 0.3);
+  }
+  50% {
+    background-color: rgba(255, 42, 109, 0.2);
+    box-shadow: 0 0 15px rgba(255, 42, 109, 0.6);
+  }
+}
+
+.alert-pulse {
+  animation: alertPulse 2s ease-in-out infinite;
+}
+
+/* ── Meter fill animation ── */
+@keyframes meterFill {
+  from { width: 0; }
+  to { width: var(--target-width); }
+}
+
+/* ── Slide in animation ── */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInBottom {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ── Card entrance staggered ── */
+.card-enter {
+  animation: cardFadeIn 0.6s ease-out forwards;
+}
+
+@keyframes cardFadeIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+    filter: blur(2px);
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* ── Typing cursor blink ── */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: "▌";
+  animation: blink 1s step-end infinite;
+  color: var(--iron-cyan);
+}
+
+/* ── Spinner for loading states ── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--iron-dim);
+  border-top-color: var(--iron-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Voltage bar style for metrics ── */
+@keyframes voltageHum {
+  0%, 100% { height: 100%; }
+  50% { height: 95%; }
+}
+
+.voltage-bar {
+  animation: voltageHum 3s ease-in-out infinite;
 }

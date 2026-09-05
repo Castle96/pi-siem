@@ -7,7 +7,9 @@ const DASHLAB_REF = path.resolve('/home/kyle/Downloads/dashlab.png');
 test.describe('Jarvis SIEM Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForSelector('#root', { state: 'attached' });
+    await page.waitForTimeout(2500);
   });
 
   test('homepage loads with correct title', async ({ page }) => {
@@ -27,7 +29,7 @@ test.describe('Jarvis SIEM Dashboard', () => {
     const panels = [
       'SYSTEM DIAGNOSTICS',
       'FLIGHT // NAVIGATION',
-      'USB STORAGE INFO',
+      'CLUSTER STORAGE',
       'THREAT TOPOLOGY',
       'INCIDENT FEED',
       'POWER & STATUS',

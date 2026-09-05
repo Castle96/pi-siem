@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import CyberCard from "./components/CyberCard";
 import ThreatMap from "./components/ThreatMap";
 import MetricsRail from "./components/MetricsRail";
@@ -13,10 +13,12 @@ import DigitalClock from "./components/DigitalClock";
 import ProjectManagement from "./components/ProjectManagement";
 import KanbanBoard from "./components/KanbanBoard";
 import { useSiemData } from "./hooks/useSiemData";
+import Particles from "./components/Particles";
 
 export default function App() {
-  const { nodes, metrics, alerts, agents, voiceEvents, voiceState } = useSiemData();
+  const { nodes, metrics, alerts, agents, voiceEvents, voiceState, storage, sync } = useSiemData();
   const [clock, setClock] = useState(new Date());
+  const headerRef = useRef(null);
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 1000);
@@ -24,6 +26,14 @@ export default function App() {
   }, []);
 
   const timeStr = clock.toISOString().replace("T", " ").replace("Z", " UTC");
+
+  useLayoutEffect(() => {
+    const cards = document.querySelectorAll(".card-enter");
+    cards.forEach((card, i) => {
+      card.style.animationDelay = `${i * 60}ms`;
+      card.classList.add("card-enter");
+    });
+  }, []);
 
   return (
     <div
@@ -41,10 +51,16 @@ export default function App() {
         `,
         gap: "0.6rem",
         background: "radial-gradient(ellipse at center, #0a0e17 0%, #05070a 70%)",
+        position: "relative",
+        zIndex: 2,
       }}
     >
+      {/* Ambient particles background */}
+      <Particles />
+
       {/* Header */}
       <header
+        ref={headerRef}
         style={{
           gridArea: "header",
           display: "flex",
@@ -54,18 +70,25 @@ export default function App() {
           paddingBottom: "0.4rem",
           fontFamily: "Share Tech Mono, monospace",
           letterSpacing: "0.1em",
+          background: "rgba(5,7,10,0.6)",
+          backdropFilter: "blur(4px)",
+          animation: "slideInBottom 0.6s ease-out",
         }}
       >
         <div
+          className="glitch-text"
           style={{
             color: "var(--iron-cyan)",
             textShadow: "0 0 10px rgba(0,229,255,0.6)",
             fontSize: "1.1rem",
+            cursor: "default",
+            animation: "headerGlow 4s ease-in-out infinite",
           }}
         >
           D.I.V.A // SIEM
         </div>
         <div
+          className="flicker"
           style={{
             color: "var(--iron-dim)",
             fontSize: "0.7rem",
@@ -75,9 +98,15 @@ export default function App() {
           }}
         >
           <DigitalClock />
-          <span>WS: {nodes.length > 0 || agents.length > 0 ? "LIVE" : "CONNECTING"}</span>
-          <span>THREAT: {threatLevel(nodes)}</span>
-          <span>AGENTS: {agents.length}</span>
+          <span className={`cursor-blink ${nodes.length > 0 || agents.length > 0 ? "" : "spinner"}`}>
+            WS: {nodes.length > 0 || agents.length > 0 ? "LIVE" : "CONNECTING"}
+          </span>
+          <span style={{ color: "#00e5ff", textShadow: "0 0 6px #00e5ff" }}>
+            THREAT: {threatLevel(nodes)}
+          </span>
+          <span style={{ color: "#00ff9d", textShadow: "0 0 6px #00ff9d" }}>
+            AGENTS: {agents.length}
+          </span>
           <span
             style={{
               color:
@@ -87,7 +116,7 @@ export default function App() {
                   ? "#00ff9d"
                   : voiceState === "thinking"
                   ? "#00e5ff"
-                  : undefined,
+                  : "var(--iron-dim)",
               textShadow:
                 voiceState !== "idle"
                   ? `0 0 10px ${
@@ -98,6 +127,7 @@ export default function App() {
                         : "#00e5ff"
                     }`
                   : undefined,
+              transition: "color 0.3s ease, text-shadow 0.3s ease",
             }}
           >
             VOICE: {voiceState.toUpperCase()}
@@ -121,7 +151,7 @@ export default function App() {
             <CircularHUD agents={agents} metrics={metrics} />
           </div>
         </CyberCard>
-        <CyberCard title="THREAT TOPOLOGY">
+        <CyberCard title="THREAT TOPOLOGY" pulse={alerts.length > 0}>
           <div style={{ height: "100%", minHeight: 220 }}>
             <ThreatMap events={nodes} />
           </div>
@@ -130,12 +160,12 @@ export default function App() {
 
       {/* Right: Storage + Feed */}
       <div style={{ gridArea: "storage", display: "grid", gap: "0.6rem", minHeight: 0 }}>
-        <CyberCard title="USB STORAGE INFO">
+        <CyberCard title="CLUSTER STORAGE">
           <div style={{ height: 200, minHeight: 180 }}>
             <StoragePanel />
           </div>
         </CyberCard>
-        <CyberCard title="INCIDENT FEED" status="magenta">
+        <CyberCard title="INCIDENT FEED" status="magenta" pulse={alerts.some(a => a.severity === "high")}>
           <div style={{ height: "100%", minHeight: 160, overflow: "hidden" }}>
             <AlertFeed alerts={alerts} />
           </div>
@@ -168,6 +198,7 @@ export default function App() {
         <CyberCard
           title={voiceState !== "idle" ? "VOICE INTERFACE // ACTIVE" : "VOICE INTERFACE"}
           status={voiceState === "speaking" ? "magenta" : "cyan"}
+          pulse={voiceState !== "idle"}
         >
           <div style={{ height: 140, minHeight: 120 }}>
             <VoicePanel events={voiceEvents} />
