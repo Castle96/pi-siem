@@ -11,7 +11,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from siem_data import add_alert, record_metric, get_conn, DB_EVENTS
+from siem_data import add_alert, add_voice_event, record_metric, get_conn, DB_EVENTS
 
 # Patterns for log parsing
 RE_SSH_FAIL = re.compile(r"Failed password for .* from (\d+\.\d+\.\d+\.\d+)")
@@ -20,6 +20,9 @@ RE_PORT_SCAN = re.compile(r"port (\d+) .* (scan|probe)")
 RE_DNS_TUNNEL = re.compile(r"(tunnel|exfil|dns).*", re.IGNORECASE)
 RE_METRIC_CPU = re.compile(r"cpu[:=]\s*([\d.]+)")
 RE_METRIC_MEM = re.compile(r"mem[:=]\s*([\d.]+)")
+RE_VOICE_STATE = re.compile(r"voice[_\s]state[=:]\s*(\w+)")
+RE_VOICE_TEXT = re.compile(r"voice[_\s]text[=:]\s*(.+)")
+RE_VOICE_SOURCE = re.compile(r"voice[_\s]source[=:]\s*(\w+)")
 
 
 def parse_line(line: str, source: str):
@@ -53,6 +56,22 @@ def parse_line(line: str, source: str):
     m = RE_METRIC_MEM.search(line)
     if m:
         record_metric("mem_usage", float(m.group(1)))
+
+    # Voice events from logs
+    voice_state = None
+    voice_text = ""
+    voice_source = ""
+    m = RE_VOICE_STATE.search(line)
+    if m:
+        voice_state = m.group(1).lower()
+    m = RE_VOICE_TEXT.search(line)
+    if m:
+        voice_text = m.group(1).strip()
+    m = RE_VOICE_SOURCE.search(line)
+    if m:
+        voice_source = m.group(1).strip()
+    if voice_state:
+        add_voice_event(voice_state, voice_text, voice_source)
 
 
 def ingest_file(path: Path, offset_file: Path):

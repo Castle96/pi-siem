@@ -64,6 +64,15 @@ def init_db():
             last_seen TEXT
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS voice_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            state TEXT NOT NULL,
+            text TEXT,
+            source TEXT,
+            ts TEXT NOT NULL
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -335,8 +344,53 @@ def seed_demo_agents():
     conn.close()
 
 
+def add_voice_event(state: str, text: str = "", source: str = ""):
+    conn = get_conn(DB_EVENTS)
+    ts = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        "INSERT INTO voice_events (state, text, source, ts) VALUES (?, ?, ?, ?)",
+        (state, text, source, ts),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_voice_events(limit: int = 20):
+    conn = get_conn(DB_EVENTS)
+    rows = conn.execute(
+        "SELECT state, text, source, ts FROM voice_events ORDER BY id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [{"state": r["state"], "text": r["text"], "source": r["source"], "ts": r["ts"]} for r in rows]
+
+
+def seed_demo_voice_events():
+    conn = get_conn(DB_EVENTS)
+    count = conn.execute("SELECT COUNT(*) FROM voice_events").fetchone()[0]
+    conn.close()
+    if count > 0:
+        return
+    now = datetime.now(timezone.utc)
+    demo = [
+        ("listening", "", "mic", (now - timedelta(seconds=8)).isoformat()),
+        ("thinking", "Checking threat map...", "system", (now - timedelta(seconds=6)).isoformat()),
+        ("speaking", "Threat level is elevated on node fleet.", "tts", (now - timedelta(seconds=4)).isoformat()),
+        ("idle", "", "", (now - timedelta(seconds=2)).isoformat()),
+    ]
+    conn = get_conn(DB_EVENTS)
+    conn.executemany(
+        "INSERT INTO voice_events (state, text, source, ts) VALUES (?, ?, ?, ?)",
+        demo,
+    )
+    conn.commit()
+    conn.close()
+
+
 if __name__ == "__main__":
     # Test data providers
     seed_demo_data()
     seed_demo_agents()
+    seed_demo_voice_events()
     print("Agents:", get_agents())
+    print("Voice events:", get_voice_events())

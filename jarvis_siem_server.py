@@ -23,8 +23,10 @@ from siem_data import (
     get_metrics,
     get_nodes,
     get_agents,
+    get_voice_events,
     seed_demo_data,
     seed_demo_agents,
+    seed_demo_voice_events,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -35,6 +37,7 @@ sock = Sock(app)
 
 seed_demo_data()
 seed_demo_agents()
+seed_demo_voice_events()
 
 PORT = int(os.getenv("SIEM_PORT", "8170"))
 TAILNET_ONLY = os.getenv("SIEM_TAILNET_ONLY", "0") == "1"
@@ -110,6 +113,11 @@ def api_agents():
     return {"agents": get_agents()}
 
 
+@app.route("/api/voice/events")
+def api_voice_events():
+    return {"voiceEvents": get_voice_events()}
+
+
 @sock.route("/ws")
 def websocket(ws):
     while True:
@@ -117,12 +125,14 @@ def websocket(ws):
         metrics = get_metrics()
         alerts = get_alerts()
         agents = get_agents()
+        voice_events = get_voice_events()
         payload = {
             "type": "update",
             "nodes": nodes,
             "metrics": metrics,
             "alerts": alerts,
             "agents": agents,
+            "voiceEvents": voice_events,
         }
         try:
             ws.send(json.dumps(payload))

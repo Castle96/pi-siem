@@ -4,10 +4,11 @@ import ThreatMap from "./components/ThreatMap";
 import MetricsRail from "./components/MetricsRail";
 import AlertFeed from "./components/AlertFeed";
 import AgentSwarm from "./components/AgentSwarm";
+import VoicePanel from "./components/voice/VoicePanel";
 import { useSiemData } from "./hooks/useSiemData";
 
 export default function App() {
-  const { nodes, metrics, alerts, agents } = useSiemData();
+  const { nodes, metrics, alerts, agents, voiceEvents, voiceState } = useSiemData();
   const [clock, setClock] = useState(new Date());
 
   useEffect(() => {
@@ -23,7 +24,7 @@ export default function App() {
         padding: "1rem",
         height: "100vh",
         display: "grid",
-        gridTemplateRows: "auto 1fr auto",
+        gridTemplateRows: "auto 1fr auto auto",
         gap: "1rem",
       }}
     >
@@ -58,6 +59,30 @@ export default function App() {
           <span>CLK: {timeStr}</span>
           <span>THREAT: {threatLevel(nodes)}</span>
           <span>AGENTS: {agents.length}</span>
+          <span
+            style={{
+              color:
+                voiceState === "listening"
+                  ? "#ffae00"
+                  : voiceState === "speaking"
+                  ? "#00ff9d"
+                  : voiceState === "thinking"
+                  ? "#00e5ff"
+                  : undefined,
+              textShadow:
+                voiceState !== "idle"
+                  ? `0 0 10px ${
+                      voiceState === "listening"
+                        ? "#ffae00"
+                        : voiceState === "speaking"
+                        ? "#00ff9d"
+                        : "#00e5ff"
+                    }`
+                  : undefined,
+            }}
+          >
+            VOICE: {voiceState.toUpperCase()}
+          </span>
         </div>
       </header>
 
@@ -92,6 +117,17 @@ export default function App() {
       <CyberCard title="AGENT SWARM ORCHESTRATION">
         <div style={{ height: 260, minHeight: 220 }}>
           <AgentSwarm agents={agents} />
+        </div>
+      </CyberCard>
+
+      <CyberCard
+        title={
+          voiceState !== "idle" ? "VOICE INTERFACE // ACTIVE" : "VOICE INTERFACE"
+        }
+        status={voiceState === "speaking" ? "magenta" : "cyan"}
+      >
+        <div style={{ height: 180, minHeight: 160 }}>
+          <VoicePanel events={voiceEvents} />
         </div>
       </CyberCard>
 
