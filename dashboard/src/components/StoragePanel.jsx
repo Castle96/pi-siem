@@ -1,11 +1,40 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function StoragePanel() {
-  const [drives, setDrives] = useState([
-    { letter: "E:", usage: 92, color: "#00e5ff" },
-    { letter: "F:", usage: 45, color: "#00ff9d" },
-    { letter: "G:", usage: 78, color: "#ffae00" },
-  ]);
+  const [entries, setEntries] = useState([]);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/storage")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        setEntries(data.storage || []);
+        setError(data.error || null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("unreachable");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const item = entries[0];
+  const total = item ? item.total : 0;
+  const free = item ? item.free : 0;
+  const used = item ? item.used : 0;
+  const usePercent = item ? item.usePercent : 0;
+
+  const fmt = (bytes) => {
+    if (!bytes && bytes !== 0) return "—";
+    const tb = bytes / 1024 ** 4;
+    if (tb >= 1) return `${tb.toFixed(1)} TB`;
+    const gb = bytes / 1024 ** 3;
+    return `${gb.toFixed(0)} GB`;
+  };
 
   return (
     <div
@@ -20,7 +49,7 @@ export default function StoragePanel() {
       }}
     >
       <div style={{ color: "var(--iron-cyan)", letterSpacing: "0.15em", marginBottom: 4 }}>
-        USB STORAGE INFO
+        CLUSTER STORAGE
       </div>
 
       {/* Drive icon */}
@@ -61,41 +90,49 @@ export default function StoragePanel() {
         />
       </div>
 
-      {/* Drive bars */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginTop: "0.5rem" }}>
-        {drives.map((drive) => (
-          <div key={drive.letter}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ color: "var(--iron-dim)", fontSize: "0.7rem" }}>({drive.letter})</span>
-              <span style={{ color: drive.color, textShadow: `0 0 6px ${drive.color}`, fontSize: "0.7rem" }}>
-                {drive.usage}%
-              </span>
-            </div>
+      {/* Usage bar */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+            <span style={{ color: "var(--iron-dim)", fontSize: "0.7rem" }}>
+              {item ? item.path : "/mnt/cluster"}
+            </span>
+            <span style={{ color: "#00e5ff", textShadow: "0 0 6px #00e5ff", fontSize: "0.7rem" }}>
+              {usePercent.toFixed(1)}%
+            </span>
+          </div>
+          <div
+            style={{
+              height: 8,
+              background: "rgba(0,229,255,0.1)",
+              border: "1px solid rgba(0,229,255,0.3)",
+              borderRadius: 2,
+              overflow: "hidden",
+            }}
+          >
             <div
               style={{
-                height: 8,
-                background: "rgba(0,229,255,0.1)",
-                border: "1px solid rgba(0,229,255,0.3)",
-                borderRadius: 2,
-                overflow: "hidden",
+                height: "100%",
+                width: `${Math.min(usePercent, 100)}%`,
+                background: "linear-gradient(90deg, rgba(0,229,255,0.4), #00e5ff)",
+                boxShadow: "0 0 10px rgba(0,229,255,0.6)",
+                transition: "width 0.5s ease",
               }}
-            >
-              <div
-                style={{
-                  height: "100%",
-                  width: `${drive.usage}%`,
-                  background: `linear-gradient(90deg, ${drive.color}44, ${drive.color})`,
-                  boxShadow: `0 0 10px ${drive.color}66`,
-                  transition: "width 0.5s ease",
-                }}
-              />
-            </div>
+            />
           </div>
-        ))}
+        </div>
       </div>
 
-      <div style={{ marginTop: "auto", color: "var(--iron-dim)", fontSize: "0.65rem", letterSpacing: "0.1em" }}>
-        545 GB AVAILABLE
+      <div
+        style={{
+          marginTop: "auto",
+          color: error ? "#ff2a6d" : "var(--iron-dim)",
+          fontSize: "0.65rem",
+          letterSpacing: "0.1em",
+          textShadow: error ? "0 0 8px rgba(255,42,109,0.5)" : undefined,
+        }}
+      >
+        {error ? `ERR: ${error}` : `${fmt(free)} AVAILABLE · ${fmt(total)} TOTAL`}
       </div>
     </div>
   );

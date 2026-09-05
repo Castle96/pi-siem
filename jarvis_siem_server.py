@@ -113,6 +113,32 @@ def api_agents():
     return {"agents": get_agents()}
 
 
+@app.route("/api/storage")
+def api_storage():
+    cluster_path = Path("/mnt/cluster")
+    result = []
+    try:
+        if cluster_path.exists() and cluster_path.is_dir():
+            total = 0
+            used = 0
+            free = 0
+            st = os.statvfs(str(cluster_path))
+            total = st.f_blocks * st.f_frsize
+            free = st.f_bfree * st.f_frsize
+            used = total - free
+            result.append({
+                "path": str(cluster_path),
+                "total": total,
+                "used": used,
+                "free": free,
+                "available": free,
+                "usePercent": round((used / total) * 100, 1) if total else 0,
+            })
+    except Exception as e:
+        return {"storage": [], "error": str(e)}
+    return {"storage": result}
+
+
 @app.route("/api/voice/events")
 def api_voice_events():
     return {"voiceEvents": get_voice_events()}
