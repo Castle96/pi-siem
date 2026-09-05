@@ -117,6 +117,7 @@ def api_agents():
 def api_storage():
     cluster_path = Path("/mnt/cluster")
     result = []
+    sync_status = []
     try:
         if cluster_path.exists() and cluster_path.is_dir():
             total = 0
@@ -134,9 +135,22 @@ def api_storage():
                 "available": free,
                 "usePercent": round((used / total) * 100, 1) if total else 0,
             })
+
+            sync_dir = cluster_path / ".sync-status"
+            if sync_dir.exists() and sync_dir.is_dir():
+                for fp in sync_dir.glob("*.json"):
+                    try:
+                        data = json.loads(fp.read_text())
+                        sync_status.append({
+                            "host": data.get("host", fp.stem),
+                            "ts": data.get("ts"),
+                            "ok": data.get("ok", False),
+                        })
+                    except Exception:
+                        pass
     except Exception as e:
-        return {"storage": [], "error": str(e)}
-    return {"storage": result}
+        return {"storage": [], "sync": [], "error": str(e)}
+    return {"storage": result, "sync": sorted(sync_status, key=lambda x: x.get("host", ""))}
 
 
 @app.route("/api/voice/events")
@@ -152,6 +166,37 @@ def websocket(ws):
         alerts = get_alerts()
         agents = get_agents()
         voice_events = get_voice_events()
+        cluster_path = Path("/mnt/cluster")
+        storage_payload = []
+        sync_payload = []
+        try:
+            if cluster_path.exists() and cluster_path.is_dir():
+                st = os.statvfs(str(cluster_path))
+                total = st.f_blocks * st.f_frsize
+                free = st.f_bfree * st.f_frsize
+                used = total - free
+                storage_payload.append({
+                    "path": str(cluster_path),
+                    "total": total,
+                    "used": used,
+                    "free": free,
+                    "available": free,
+                    "usePercent": round((used / total) * 100, 1) if total else 0,
+                })
+                sync_dir = cluster_path / ".sync-status"
+                if sync_dir.exists() and sync_dir.is_dir():
+                    for fp in sync_dir.glob("*.json"):
+                        try:
+                            data = json.loads(fp.read_text())
+                            sync_payload.append({
+                                "host": data.get("host", fp.stem),
+                                "ts": data.get("ts"),
+                                "ok": data.get("ok", False),
+                            })
+                        except Exception:
+                            pass
+        except Exception:
+            pass
         payload = {
             "type": "update",
             "nodes": nodes,
@@ -159,6 +204,8 @@ def websocket(ws):
             "alerts": alerts,
             "agents": agents,
             "voiceEvents": voice_events,
+            "storage": storage_payload,
+            "sync": sorted(sync_payload, key=lambda x: x.get("host", "")),
         }
         try:
             ws.send(json.dumps(payload))

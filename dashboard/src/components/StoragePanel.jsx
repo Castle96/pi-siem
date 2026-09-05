@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 export default function StoragePanel() {
   const [entries, setEntries] = useState([]);
+  const [syncList, setSyncList] = useState([]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -11,6 +12,7 @@ export default function StoragePanel() {
       .then((data) => {
         if (cancelled) return;
         setEntries(data.storage || []);
+        setSyncList(data.sync || []);
         setError(data.error || null);
       })
       .catch(() => {
@@ -121,6 +123,35 @@ export default function StoragePanel() {
             />
           </div>
         </div>
+
+        {/* Sync status */}
+        {syncList.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginTop: "0.25rem" }}>
+            <div style={{ color: "var(--iron-dim)", fontSize: "0.6rem", letterSpacing: "0.1em" }}>
+              SYNC STATUS
+            </div>
+            {syncList.map((s) => {
+              const host = s.host || "unknown";
+              const ok = s.ok === true;
+              const color = ok ? "#00ff9d" : "#ff2a6d";
+              return (
+                <div
+                  key={host}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "0.6rem",
+                    color,
+                    textShadow: `0 0 4px ${color}`,
+                  }}
+                >
+                  <span>{host}</span>
+                  <span>{s.ts ? new Date(s.ts).toLocaleString() : "—"}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div

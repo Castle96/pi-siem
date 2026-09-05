@@ -12,6 +12,8 @@ export function useSiemData() {
   const [agents, setAgents] = useState([]);
   const [voiceEvents, setVoiceEvents] = useState([]);
   const [voiceState, setVoiceState] = useState("idle");
+  const [storage, setStorage] = useState([]);
+  const [sync, setSync] = useState([]);
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
 
@@ -34,6 +36,8 @@ export function useSiemData() {
               setVoiceState(payload.voiceEvents[0].state || "idle");
             }
           }
+          if (Array.isArray(payload.storage)) setStorage(payload.storage);
+          if (Array.isArray(payload.sync)) setSync(payload.sync);
         } catch {
           // ignore malformed frames
         }
@@ -60,5 +64,5 @@ export function useSiemData() {
     };
   }, [connect]);
 
-  return { nodes, metrics, alerts, agents, voiceEvents, voiceState };
+  return { nodes, metrics, alerts, agents, voiceEvents, voiceState, storage, sync };
 }

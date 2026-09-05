@@ -69,9 +69,11 @@ test.describe('Jarvis SIEM Dashboard', () => {
     await expect(alerts.first()).toBeVisible();
   });
 
-  test('storage panel shows drive info', async ({ page }) => {
-    await expect(page.getByText('USB STORAGE INFO').first()).toBeVisible();
-    await expect(page.getByText('545 GB AVAILABLE').first()).toBeVisible();
+  test('storage panel shows cluster storage info', async ({ page }) => {
+    await expect(page.getByText('CLUSTER STORAGE').first()).toBeVisible();
+    await expect(page.getByText('AVAILABLE').first()).toBeVisible();
+    const storage = await page.request.get('/api/storage');
+    expect(storage.ok()).toBeTruthy();
   });
 
   test('power status shows charge and capacity', async ({ page }) => {
