@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-const PARTICLE_COUNT = 40;
+const PARTICLE_COUNT = 60;
 
 export default function Particles() {
   const canvasRef = useRef(null);
@@ -22,16 +22,17 @@ export default function Particles() {
     const rand = (min, max) => Math.random() * (max - min) + min;
 
     const spawn = () => {
-      const colors = ["#00e5ff", "#ff2a6d", "#00ff9d", "#ffae00"];
+      const colors = ["#00e5ff", "#ff2a6d", "#00ff9d", "#ffae00", "#b300ff"];
       return {
         x: rand(0, canvas.width),
-        y: rand(-30, 0),
-        vx: rand(-0.3, -0.1),
-        vy: rand(0.4, 1.2),
-        size: rand(1, 2.5),
+        y: rand(-50, 0),
+        vx: rand(-0.8, -0.2),
+        vy: rand(0.8, 2.5),
+        size: rand(1, 3.5),
         color: colors[Math.floor(rand(0, colors.length))],
-        life: rand(600, 1200),
+        life: rand(400, 900),
         born: performance.now(),
+        glow: rand(5, 15),
       };
     };
 
@@ -44,7 +45,7 @@ export default function Particles() {
 
       for (const p of particles) {
         const age = performance.now() - p.born;
-        const alpha = Math.min(1, age / 200) * (1 - age / p.life);
+        const alpha = Math.min(1, age / 150) * (1 - age / p.life);
         if (alpha <= 0) {
           Object.assign(p, spawn());
           p.born = performance.now();
@@ -55,8 +56,8 @@ export default function Particles() {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = alpha * 0.7;
-        ctx.shadowBlur = 8;
+        ctx.globalAlpha = alpha;
+        ctx.shadowBlur = p.glow;
         ctx.shadowColor = p.color;
         ctx.fill();
         ctx.shadowBlur = 0;

@@ -50,13 +50,19 @@ export default function App() {
           "power kanban voice"
         `,
         gap: "0.6rem",
-        background: "radial-gradient(ellipse at center, #0a0e17 0%, #05070a 70%)",
+        background: "transparent",
         position: "relative",
         zIndex: 2,
+        border: "1px solid rgba(0,229,255,0.1)",
+        borderRadius: 4,
       }}
     >
       {/* Ambient particles background */}
       <Particles />
+
+      {/* Ambient pulse overlay */}
+      <div id="pulse-overlay" />
+      <div className="sine-sweep" />
 
       {/* Header */}
       <header
@@ -66,23 +72,24 @@ export default function App() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid rgba(0,229,255,0.15)",
+          borderBottom: "1px solid rgba(0,229,255,0.2)",
           paddingBottom: "0.4rem",
           fontFamily: "Share Tech Mono, monospace",
           letterSpacing: "0.1em",
-          background: "rgba(5,7,10,0.6)",
-          backdropFilter: "blur(4px)",
-          animation: "slideInBottom 0.6s ease-out",
+          background: "rgba(5,7,10,0.7)",
+          backdropFilter: "blur(6px)",
+          animation: "slideInBottom 0.4s ease-out, borderPulse 2.5s ease-in-out infinite",
+          borderImage: "linear-gradient(90deg, rgba(0,229,255,0.2), rgba(255,42,109,0.1), rgba(0,229,255,0.2)) 1",
         }}
       >
         <div
-          className="glitch-text"
+          className="header-glitch glitch-text"
           style={{
             color: "var(--iron-cyan)",
-            textShadow: "0 0 10px rgba(0,229,255,0.6)",
-            fontSize: "1.1rem",
+            textShadow: "0 0 12px rgba(0,229,255,0.7)",
+            fontSize: "1.15rem",
+            letterSpacing: "0.15em",
             cursor: "default",
-            animation: "headerGlow 4s ease-in-out infinite",
           }}
         >
           D.I.V.A // SIEM
