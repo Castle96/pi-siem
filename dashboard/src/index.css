@@ -8,9 +8,9 @@
   --iron-amber: #ffae00;
   --iron-text: #e0f7fa;
   --iron-dim: #4a6070;
-  --iron-grid: rgba(0, 229, 255, 0.08);
-  --iron-glow-cyan: 0 0 25px rgba(0, 229, 255, 0.5);
-  --iron-glow-magenta: 0 0 25px rgba(255, 42, 109, 0.5);
+  --iron-grid: rgba(0, 229, 255, 0.06);
+  --iron-glow-cyan: 0 0 20px rgba(0, 229, 255, 0.4);
+  --iron-glow-magenta: 0 0 20px rgba(255, 42, 109, 0.4);
 }
 
 * { box-sizing: border-box; }
@@ -24,7 +24,7 @@ html, body, #root {
   overflow-x: hidden;
 }
 
-/* ── Full page pulsation layer ── */
+/* ── Full page pulsation layer - slower ── */
 #pulse-overlay {
   position: fixed;
   inset: 0;
@@ -32,49 +32,291 @@ html, body, #root {
   z-index: 0;
   background: radial-gradient(
     ellipse at center,
-    rgba(0, 229, 255, 0.08) 0%,
+    rgba(0, 229, 255, 0.06) 0%,
     rgba(0, 229, 255, 0) 50%,
-    rgba(255, 42, 109, 0.05) 80%
+    rgba(255, 42, 109, 0.04) 80%
   );
-  animation: pulseGlow 4s ease-in-out infinite;
+  animation: pulseGlow 8s ease-in-out infinite;
   mix-blend-mode: screen;
 }
 
 @keyframes pulseGlow {
   0%, 100% {
-    opacity: 0.4;
+    opacity: 0.35;
     background: radial-gradient(
       ellipse at 30% 40%,
-      rgba(0, 229, 255, 0.12) 0%,
+      rgba(0, 229, 255, 0.1) 0%,
       rgba(0, 229, 255, 0) 40%,
-      rgba(255, 42, 109, 0.06) 70%
+      rgba(255, 42, 109, 0.04) 70%
     );
   }
   25% {
-    opacity: 0.8;
+    opacity: 0.5;
     background: radial-gradient(
       ellipse at 70% 20%,
-      rgba(255, 42, 109, 0.15) 0%,
+      rgba(255, 42, 109, 0.1) 0%,
       rgba(255, 42, 109, 0) 45%,
-      rgba(0, 229, 255, 0.08) 70%
+      rgba(0, 229, 255, 0.05) 70%
     );
   }
   50% {
-    opacity: 0.3;
+    opacity: 0.25;
     background: radial-gradient(
       ellipse at center,
-      rgba(0, 229, 255, 0.05) 0%,
-      rgba(0, 0, 0, 0.15) 60%
+      rgba(0, 229, 255, 0.04) 0%,
+      rgba(0, 0, 0, 0.1) 60%
     );
   }
   75% {
-    opacity: 0.9;
+    opacity: 0.45;
     background: radial-gradient(
       ellipse at 20% 80%,
-      rgba(0, 255, 157, 0.12) 0%,
-      rgba(0, 229, 255, 0.06) 40%
+      rgba(0, 255, 157, 0.08) 0%,
+      rgba(0, 229, 255, 0.04) 40%
     );
   }
+}
+
+/* ── Sync-pulsing rings ── */
+#sync-rings {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.sync-ring {
+  position: absolute;
+  border: 1px solid rgba(0, 229, 255, 0.15);
+  border-radius: 50%;
+  opacity: 0;
+  animation: syncRingPulse 8s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+.sync-ring:nth-child(1) {
+  width: 200px;
+  height: 200px;
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+  border-color: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.1), inset 0 0 15px rgba(0, 229, 255, 0.05);
+}
+
+.sync-ring:nth-child(2) {
+  width: 350px;
+  height: 350px;
+  top: 20%;
+  right: 15%;
+  animation-delay: 2s;
+  border-color: rgba(255, 42, 109, 0.15);
+  box-shadow: 0 0 15px rgba(255, 42, 109, 0.08), inset 0 0 15px rgba(255, 42, 109, 0.04);
+}
+
+.sync-ring:nth-child(3) {
+  width: 300px;
+  height: 300px;
+  bottom: 15%;
+  left: 20%;
+  animation-delay: 4s;
+  border-color: rgba(0, 255, 157, 0.15);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.08), inset 0 0 15px rgba(0, 255, 157, 0.04);
+}
+
+.sync-ring:nth-child(4) {
+  width: 400px;
+  height: 400px;
+  top: 5%;
+  right: 30%;
+  animation-delay: 1s;
+  border-color: rgba(255, 174, 0, 0.12);
+  box-shadow: 0 0 15px rgba(255, 174, 0, 0.06), inset 0 0 15px rgba(255, 174, 0, 0.03);
+}
+
+.sync-ring:nth-child(5) {
+  width: 250px;
+  height: 250px;
+  bottom: 25%;
+  right: 10%;
+  animation-delay: 5s;
+  border-color: rgba(179, 0, 255, 0.15);
+  box-shadow: 0 0 15px rgba(179, 0, 255, 0.08), inset 0 0 15px rgba(179, 0, 255, 0.04);
+}
+
+.sync-ring:nth-child(6) {
+  width: 150px;
+  height: 150px;
+  top: 40%;
+  left: 35%;
+  animation-delay: 3s;
+  border-color: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.15), inset 0 0 20px rgba(0, 229, 255, 0.08);
+}
+
+.sync-ring:nth-child(7) {
+  width: 500px;
+  height: 500px;
+  top: 30%;
+  left: 15%;
+  animation-delay: 6s;
+  border-color: rgba(255, 42, 109, 0.1);
+  box-shadow: 0 0 20px rgba(255, 42, 109, 0.05), inset 0 0 20px rgba(255, 42, 109, 0.03);
+}
+
+.sync-ring:nth-child(8) {
+  width: 180px;
+  height: 180px;
+  bottom: 30%;
+  left: 50%;
+  animation-delay: 4.5s;
+  border-color: rgba(0, 255, 157, 0.18);
+  box-shadow: 0 0 12px rgba(0, 255, 157, 0.1), inset 0 0 12px rgba(0, 255, 157, 0.05);
+}
+
+@keyframes syncRingPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.15;
+    border-color: inherit;
+  }
+  25% {
+    transform: scale(1.05);
+    opacity: 0.4;
+    filter: brightness(1.2);
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.25;
+    border-color: rgba(255, 42, 109, 0.2) !important;
+    box-shadow: 0 0 25px rgba(255, 42, 109, 0.15) !important;
+  }
+  75% {
+    transform: scale(1.03);
+    opacity: 0.35;
+    filter: brightness(1.1);
+  }
+}
+
+/* Also pulse a secondary ring layer for more depth */
+#sync-rings-secondary {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.sync-ring-secondary {
+  position: absolute;
+  border: 1px dashed rgba(0, 229, 255, 0.08);
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: syncRingPulseSecondary 12s linear infinite;
+}
+
+.sync-ring-secondary:nth-child(1) {
+  width: 450px;
+  height: 450px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: 0s;
+  border-color: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.03);
+}
+
+.sync-ring-secondary:nth-child(2) {
+  width: 320px;
+  height: 320px;
+  top: 30%;
+  left: 70%;
+  animation-delay: 3s;
+  border-color: rgba(255, 42, 109, 0.08);
+}
+
+.sync-ring-secondary:nth-child(3) {
+  width: 380px;
+  height: 380px;
+  top: 60%;
+  left: 10%;
+  animation-delay: 6s;
+  border-color: rgba(0, 255, 157, 0.08);
+}
+
+@keyframes syncRingPulseSecondary {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.2;
+  }
+  33% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 0.5;
+  }
+  66% {
+    transform: translate(-50%, -50%) scale(0.95);
+    opacity: 0.3;
+  }
+}
+
+/* ── Ambient grid - slower, subtler ── */
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--iron-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--iron-grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  animation: gridPulse 6s ease-in-out infinite;
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.4; background-size: 40px 40px; }
+  50% { opacity: 0.6; background-size: 42px 42px; }
+}
+
+/* ── Scanlines - slower ── */
+.global-scanlines {
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.2) 0px,
+    rgba(0, 0, 0, 0.2) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: overlay;
+  animation: scan 8s linear infinite;
+}
+
+@keyframes scan {
+  from { background-position-y: 0; }
+  to { background-position-y: 100%; }
+}
+
+/* ── Flicker effect - slower ── */
+.flicker {
+  animation: flicker 5s infinite;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  3% { opacity: 0.85; }
+  6% { opacity: 1; }
+  7% { opacity: 0.9; }
+  10% { opacity: 1; }
+  70% { opacity: 1; }
+  71% { opacity: 0.95; }
+  72% { opacity: 1; }
 }
 
 /* ── Ambient grid with aggressive pulse ── */

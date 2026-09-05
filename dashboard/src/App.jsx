@@ -15,17 +15,21 @@ import KanbanBoard from "./components/KanbanBoard";
 import { useSiemData } from "./hooks/useSiemData";
 import Particles from "./components/Particles";
 
+import SystemMonitor from "./pages/SystemMonitor";
+import ServiceDiscovery from "./pages/ServiceDiscovery";
+import ClusterView from "./pages/ClusterView";
+
 export default function App() {
   const { nodes, metrics, alerts, agents, voiceEvents, voiceState, storage, sync } = useSiemData();
   const [clock, setClock] = useState(new Date());
   const headerRef = useRef(null);
+  const [activePage, setActivePage] = useState(null);
+  const [showPageOverlay, setShowPageOverlay] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-
-  const timeStr = clock.toISOString().replace("T", " ").replace("Z", " UTC");
 
   useLayoutEffect(() => {
     const cards = document.querySelectorAll(".card-enter");
@@ -34,6 +38,16 @@ export default function App() {
       card.classList.add("card-enter");
     });
   }, []);
+
+  const openPage = (page) => {
+    setActivePage(page);
+    setShowPageOverlay(true);
+  };
+
+  const closePage = () => {
+    setShowPageOverlay(false);
+    setTimeout(() => setActivePage(null), 300);
+  };
 
   return (
     <div
@@ -213,7 +227,104 @@ export default function App() {
         </CyberCard>
       </div>
 
+      {/* Page navigation trigger cards - smaller, in the bottom area */}
+      <div style={{ gridArea: "power", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", minHeight: 0 }}>
+        <CyberCard
+          title="SYSTEM MONITOR"
+          onClick={() => openPage("system")}
+          style={{ cursor: "pointer", height: "auto", minHeight: 100 }}
+        >
+          <div style={{ padding: "0.4rem 0.6rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span className="spinner" />
+            <span style={{ color: "var(--iron-cyan)", fontSize: "0.7rem" }}>CPU · RAM · DISK · NET</span>
+          </div>
+        </CyberCard>
+        <CyberCard
+          title="SERVICE DISCOVERY"
+          onClick={() => openPage("services")}
+          style={{ cursor: "pointer", height: "auto", minHeight: 100 }}
+        >
+          <div style={{ padding: "0.4rem 0.6rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span className="spinner" />
+            <span style={{ color: "#00ff9d", fontSize: "0.7rem" }}>SVCS · PORTS · SCAN</span>
+          </div>
+        </CyberCard>
+      </div>
+
       <div className="global-scanlines" />
+
+      {/* Page overlay */}
+      {showPageOverlay && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.85)",
+            zIndex: 10000,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+          onClick={closePage}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 40,
+              background: "rgba(5,7,10,0.95)",
+              borderBottom: "1px solid rgba(0,229,255,0.2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0 1rem",
+              zIndex: 10,
+              backdropFilter: "blur(8px)",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <span className="spinner" style={{ width: 8, height: 8 }} />
+              <span className="header-glitch glitch-text" style={{ color: "var(--iron-cyan)", fontSize: "0.85rem", textShadow: "0 0 8px rgba(0,229,255,0.5)", letterSpacing: "0.1em" }}>
+                {activePage === "system" && "SYSTEM MONITOR // LIVE"}
+                {activePage === "services" && "SERVICE DISCOVERY // LIVE"}
+                {activePage === "cluster" && "CLUSTER VIEW // LIVE"}
+              </span>
+            </div>
+            <button
+              onClick={closePage}
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(0,229,255,0.3)",
+                color: "var(--iron-cyan)",
+                padding: "0.3rem 0.8rem",
+                fontFamily: "Share Tech Mono, monospace",
+                fontSize: "0.7rem",
+                cursor: "pointer",
+                borderRadius: 2,
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={e => {
+                e.target.style.background = "rgba(0,229,255,0.1)";
+                e.target.style.borderColor = "rgba(0,229,255,0.6)";
+              }}
+              onMouseLeave={e => {
+                e.target.style.background = "transparent";
+                e.target.style.borderColor = "rgba(0,229,255,0.3)";
+              }}
+            >
+              CLOSE [ESC]
+            </button>
+          </div>
+          <div style={{ flex: 1, overflow: "auto", padding: "0.6rem" }} onClick={e => e.stopPropagation()}>
+            {activePage === "system" && <SystemMonitor />}
+            {activePage === "services" && <ServiceDiscovery />}
+            {activePage === "cluster" && <ClusterView />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

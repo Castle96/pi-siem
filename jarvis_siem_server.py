@@ -28,6 +28,12 @@ from siem_data import (
     seed_demo_agents,
     seed_demo_voice_events,
 )
+from jarvis_sysmon import get_system_status, SysMonServer
+from siem_discovery import (
+    get_services_summary, get_listening_ports,
+    get_cluster_summary, scan_all_cluster,
+    get_active_services, get_inactive_services,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 DIST_DIR = BASE_DIR / "dashboard" / "dist"
@@ -156,6 +162,45 @@ def api_storage():
 @app.route("/api/voice/events")
 def api_voice_events():
     return {"voiceEvents": get_voice_events()}
+
+
+@app.route("/api/system")
+def api_system():
+    return get_system_status()
+
+
+@app.route("/api/services")
+def api_services():
+    return get_services_summary()
+
+
+@app.route("/api/ports")
+def api_ports():
+    return {"ports": get_listening_ports()}
+
+
+@app.route("/api/cluster")
+def api_cluster():
+    return get_cluster_summary()
+
+
+@app.route("/api/cluster/nodes")
+def api_cluster_nodes():
+    return {"nodes": scan_all_cluster()}
+
+
+@app.route("/api/cluster/node/<hostname>")
+def api_cluster_node(hostname):
+    from siem_discovery import CLUSTER_NODES
+    node = next((n for n in CLUSTER_NODES if n["hostname"] == hostname), None)
+    if node:
+        return scan_all_cluster()[0] if scan_all_cluster() else {"error": "node not found"}
+    return {"error": f"Unknown node: {hostname}"}, 404
+
+
+@app.route("/api/inactive-services")
+def api_inactive_services():
+    return {"services": get_inactive_services()}
 
 
 @sock.route("/ws")
