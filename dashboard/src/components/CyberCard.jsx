@@ -7,13 +7,14 @@ export default function CyberCard({ title, children, status = "cyan" }) {
       style={{
         position: "relative",
         border: "1px solid rgba(0,229,255,0.15)",
-        background: "rgba(5,7,10,0.85)",
-        padding: "1.25rem",
+        background: "rgba(5,7,10,0.92)",
+        padding: "0.85rem",
         boxShadow: glow,
         height: "100%",
         display: "flex",
         flexDirection: "column",
         minHeight: 0,
+        overflow: "hidden",
       }}
     >
       <Corner position="top-left" />
@@ -23,18 +24,19 @@ export default function CyberCard({ title, children, status = "cyan" }) {
       {title && (
         <h3
           style={{
-            margin: "0 0 0.75rem 0",
+            margin: "0 0 0.5rem 0",
             fontFamily: "Share Tech Mono, monospace",
             color: "var(--iron-cyan)",
             textShadow: "0 0 8px rgba(0,229,255,0.6)",
             letterSpacing: "0.08em",
-            fontSize: "0.95rem",
+            fontSize: "0.8rem",
+            flexShrink: 0,
           }}
         >
           {title}
         </h3>
       )}
-      <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
+      <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>{children}</div>
     </div>
   );
 }
@@ -46,6 +48,8 @@ function Corner({ position }) {
     height: 10,
     borderColor: "var(--iron-cyan)",
     borderStyle: "solid",
+    pointerEvents: "none",
+    zIndex: 2,
   };
 
   const variants = {

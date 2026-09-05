@@ -1,16 +1,15 @@
-import { useMemo } from "react";
-
 export default function AlertFeed({ alerts = [] }) {
-  const items = useMemo(() => alerts, [alerts]);
+  const items = alerts;
 
   return (
     <div
       style={{
         height: "100%",
         overflowY: "auto",
-        fontSize: "0.75rem",
-        lineHeight: 1.6,
+        fontSize: "0.7rem",
+        lineHeight: 1.5,
         color: "var(--iron-text)",
+        paddingRight: 4,
       }}
     >
       {items.length === 0 && (
@@ -27,11 +26,13 @@ export default function AlertFeed({ alerts = [] }) {
           <div
             key={a.id || a.text}
             style={{
-              borderBottom: "1px solid rgba(0,229,255,0.08)",
-              padding: "0.4rem 0",
+              borderBottom: "1px solid rgba(0,229,255,0.06)",
+              padding: "0.35rem 0",
               display: "flex",
               gap: "0.5rem",
               alignItems: "flex-start",
+              wordBreak: "break-word",
+              overflow: "hidden",
             }}
           >
             <span
@@ -39,12 +40,14 @@ export default function AlertFeed({ alerts = [] }) {
                 color,
                 textShadow: `0 0 6px ${color}`,
                 fontFamily: "Share Tech Mono, monospace",
-                minWidth: 48,
+                minWidth: 44,
+                flexShrink: 0,
+                fontSize: "0.65rem",
               }}
             >
               {(a.severity || "INFO").toUpperCase()}
             </span>
-            <span>{a.text}</span>
+            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{a.text}</span>
           </div>
         );
       })}

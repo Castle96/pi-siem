@@ -10,6 +10,8 @@ import DiagnosticPanel from "./components/DiagnosticPanel";
 import StoragePanel from "./components/StoragePanel";
 import PowerStatusPanel from "./components/PowerStatusPanel";
 import DigitalClock from "./components/DigitalClock";
+import ProjectManagement from "./components/ProjectManagement";
+import KanbanBoard from "./components/KanbanBoard";
 import { useSiemData } from "./hooks/useSiemData";
 
 export default function App() {
@@ -26,7 +28,7 @@ export default function App() {
   return (
     <div
       style={{
-        padding: "0.75rem",
+        padding: "0.6rem",
         height: "100vh",
         display: "grid",
         gridTemplateRows: "auto 1fr auto",
@@ -35,9 +37,9 @@ export default function App() {
           "header header header"
           "diag center storage"
           "diag center feed"
-          "power power voice"
+          "power kanban voice"
         `,
-        gap: "0.75rem",
+        gap: "0.6rem",
         background: "radial-gradient(ellipse at center, #0a0e17 0%, #05070a 70%)",
       }}
     >
@@ -49,7 +51,7 @@ export default function App() {
           justifyContent: "space-between",
           alignItems: "center",
           borderBottom: "1px solid rgba(0,229,255,0.15)",
-          paddingBottom: "0.5rem",
+          paddingBottom: "0.4rem",
           fontFamily: "Share Tech Mono, monospace",
           letterSpacing: "0.1em",
         }}
@@ -61,12 +63,12 @@ export default function App() {
             fontSize: "1.1rem",
           }}
         >
-          J.A.R.V.I.S. // SIEM
+          D.I.V.A // SIEM
         </div>
         <div
           style={{
             color: "var(--iron-dim)",
-            fontSize: "0.75rem",
+            fontSize: "0.7rem",
             display: "flex",
             gap: "1.25rem",
             alignItems: "center",
@@ -113,45 +115,61 @@ export default function App() {
       </div>
 
       {/* Center: HUD + Threat */}
-      <div style={{ gridArea: "center", display: "grid", gap: "0.75rem", minHeight: 0 }}>
+      <div style={{ gridArea: "center", display: "grid", gap: "0.6rem", minHeight: 0 }}>
         <CyberCard title="FLIGHT // NAVIGATION">
-          <div style={{ height: 280, minHeight: 240 }}>
+          <div style={{ height: 260, minHeight: 220 }}>
             <CircularHUD agents={agents} metrics={metrics} />
           </div>
         </CyberCard>
         <CyberCard title="THREAT TOPOLOGY">
-          <div style={{ height: "100%", minHeight: 240 }}>
+          <div style={{ height: "100%", minHeight: 220 }}>
             <ThreatMap events={nodes} />
           </div>
         </CyberCard>
       </div>
 
       {/* Right: Storage + Feed */}
-      <div style={{ gridArea: "storage", display: "grid", gap: "0.75rem", minHeight: 0 }}>
+      <div style={{ gridArea: "storage", display: "grid", gap: "0.6rem", minHeight: 0 }}>
         <CyberCard title="USB STORAGE INFO">
-          <div style={{ height: 220, minHeight: 200 }}>
+          <div style={{ height: 200, minHeight: 180 }}>
             <StoragePanel />
           </div>
         </CyberCard>
         <CyberCard title="INCIDENT FEED" status="magenta">
-          <div style={{ height: "100%", minHeight: 180, overflow: "hidden" }}>
+          <div style={{ height: "100%", minHeight: 160, overflow: "hidden" }}>
             <AlertFeed alerts={alerts} />
           </div>
         </CyberCard>
       </div>
 
-      {/* Bottom: Power + Voice */}
-      <div style={{ gridArea: "feed", display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "0.75rem", minHeight: 0 }}>
+      {/* Bottom: Power + Kanban + Voice */}
+      <div style={{ gridArea: "power", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", minHeight: 0 }}>
         <CyberCard title="POWER & STATUS">
-          <div style={{ height: 160, minHeight: 140 }}>
+          <div style={{ height: 140, minHeight: 120 }}>
             <PowerStatusPanel />
           </div>
         </CyberCard>
+        <CyberCard title="PROJECT MANAGEMENT">
+          <div style={{ height: 140, minHeight: 120 }}>
+            <ProjectManagement />
+          </div>
+        </CyberCard>
+      </div>
+
+      <div style={{ gridArea: "kanban", minHeight: 0 }}>
+        <CyberCard title="KANBAN BOARD">
+          <div style={{ height: 140, minHeight: 120 }}>
+            <KanbanBoard />
+          </div>
+        </CyberCard>
+      </div>
+
+      <div style={{ gridArea: "voice", minHeight: 0 }}>
         <CyberCard
           title={voiceState !== "idle" ? "VOICE INTERFACE // ACTIVE" : "VOICE INTERFACE"}
           status={voiceState === "speaking" ? "magenta" : "cyan"}
         >
-          <div style={{ height: 160, minHeight: 140 }}>
+          <div style={{ height: 140, minHeight: 120 }}>
             <VoicePanel events={voiceEvents} />
           </div>
         </CyberCard>

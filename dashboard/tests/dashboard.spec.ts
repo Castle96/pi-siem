@@ -11,12 +11,12 @@ test.describe('Jarvis SIEM Dashboard', () => {
   });
 
   test('homepage loads with correct title', async ({ page }) => {
-    await expect(page).toHaveTitle('J.A.R.V.I.S. // SIEM');
+    await expect(page).toHaveTitle('D.I.V.A // SIEM');
     await expect(page.locator('#root')).toBeDefined();
   });
 
   test('header elements are visible', async ({ page }) => {
-    await expect(page.getByText('J.A.R.V.I.S. // SIEM').first()).toBeVisible();
+    await expect(page.getByText('D.I.V.A // SIEM').first()).toBeVisible();
     await expect(page.getByText('WS: LIVE').first()).toBeVisible();
     await expect(page.getByText('THREAT:').first()).toBeVisible();
     await expect(page.getByText('AGENTS:').first()).toBeVisible();
@@ -31,6 +31,8 @@ test.describe('Jarvis SIEM Dashboard', () => {
       'THREAT TOPOLOGY',
       'INCIDENT FEED',
       'POWER & STATUS',
+      'PROJECT MANAGEMENT',
+      'KANBAN BOARD',
       'VOICE INTERFACE',
     ];
 
