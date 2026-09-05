@@ -104,9 +104,9 @@ export default function App() {
       </header>
 
       {/* Left: Diagnostics */}
-      <div style={{ gridArea: "diag", minHeight: 0 }}>
+      <div style={{ gridArea: "diag", minHeight: 0, display: "flex", flexDirection: "column" }}>
         <CyberCard title="SYSTEM DIAGNOSTICS">
-          <div style={{ height: "100%", minHeight: 320 }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
             <DiagnosticPanel metrics={metrics} alerts={alerts} />
           </div>
         </CyberCard>
@@ -129,12 +129,12 @@ export default function App() {
       {/* Right: Storage + Feed */}
       <div style={{ gridArea: "storage", display: "grid", gap: "0.75rem", minHeight: 0 }}>
         <CyberCard title="USB STORAGE INFO">
-          <div style={{ height: 220 }}>
+          <div style={{ height: 220, minHeight: 200 }}>
             <StoragePanel />
           </div>
         </CyberCard>
         <CyberCard title="INCIDENT FEED" status="magenta">
-          <div style={{ height: "100%", minHeight: 180 }}>
+          <div style={{ height: "100%", minHeight: 180, overflow: "hidden" }}>
             <AlertFeed alerts={alerts} />
           </div>
         </CyberCard>
@@ -143,7 +143,7 @@ export default function App() {
       {/* Bottom: Power + Voice */}
       <div style={{ gridArea: "feed", display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "0.75rem", minHeight: 0 }}>
         <CyberCard title="POWER & STATUS">
-          <div style={{ height: 160 }}>
+          <div style={{ height: 160, minHeight: 140 }}>
             <PowerStatusPanel />
           </div>
         </CyberCard>
@@ -151,7 +151,7 @@ export default function App() {
           title={voiceState !== "idle" ? "VOICE INTERFACE // ACTIVE" : "VOICE INTERFACE"}
           status={voiceState === "speaking" ? "magenta" : "cyan"}
         >
-          <div style={{ height: 160 }}>
+          <div style={{ height: 160, minHeight: 140 }}>
             <VoicePanel events={voiceEvents} />
           </div>
         </CyberCard>
