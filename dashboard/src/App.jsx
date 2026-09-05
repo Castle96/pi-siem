@@ -3,27 +3,15 @@ import CyberCard from "./components/CyberCard";
 import ThreatMap from "./components/ThreatMap";
 import MetricsRail from "./components/MetricsRail";
 import AlertFeed from "./components/AlertFeed";
+import AgentSwarm from "./components/AgentSwarm";
+import { useSiemData } from "./hooks/useSiemData";
 
 export default function App() {
+  const { nodes, metrics, alerts, agents } = useSiemData();
   const [clock, setClock] = useState(new Date());
-  const [threatLevel, setThreatLevel] = useState("LOW");
-  const [nodeCount, setNodeCount] = useState("—");
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Replace with live tailnet / backend data later
-  useEffect(() => {
-    const levels = ["LOW", "ELEVATED", "HIGH", "CRITICAL"];
-    const counts = ["12", "18", "23", "31"];
-    let tick = 0;
-    const id = setInterval(() => {
-      tick = (tick + 1) % levels.length;
-      setThreatLevel(levels[tick]);
-      setNodeCount(counts[tick]);
-    }, 4000);
     return () => clearInterval(id);
   }, []);
 
@@ -35,7 +23,7 @@ export default function App() {
         padding: "1rem",
         height: "100vh",
         display: "grid",
-        gridTemplateRows: "auto 1fr",
+        gridTemplateRows: "auto 1fr auto",
         gap: "1rem",
       }}
     >
@@ -66,10 +54,10 @@ export default function App() {
             gap: "1.5rem",
           }}
         >
-          <span>TAILNET: ACTIVE</span>
-          <span>NODES: {nodeCount}</span>
+          <span>WS: {nodes.length > 0 || agents.length > 0 ? "LIVE" : "CONNECTING"}</span>
           <span>CLK: {timeStr}</span>
-          <span>THREAT: {threatLevel}</span>
+          <span>THREAT: {threatLevel(nodes)}</span>
+          <span>AGENTS: {agents.length}</span>
         </div>
       </header>
 
@@ -83,25 +71,39 @@ export default function App() {
       >
         <CyberCard title="THREAT TOPOLOGY">
           <div style={{ height: "100%", minHeight: 320 }}>
-            <ThreatMap />
+            <ThreatMap events={nodes} />
           </div>
         </CyberCard>
 
         <div style={{ display: "grid", gap: "1rem" }}>
           <CyberCard title="INCIDENT FEED" status="magenta">
             <div style={{ height: 220 }}>
-              <AlertFeed />
+              <AlertFeed alerts={alerts} />
             </div>
           </CyberCard>
           <CyberCard title="METRICS">
             <div style={{ height: 160 }}>
-              <MetricsRail />
+              <MetricsRail metrics={metrics} />
             </div>
           </CyberCard>
         </div>
       </div>
 
+      <CyberCard title="AGENT SWARM ORCHESTRATION">
+        <div style={{ height: 260, minHeight: 220 }}>
+          <AgentSwarm agents={agents} />
+        </div>
+      </CyberCard>
+
       <div className="global-scanlines" />
     </div>
   );
+}
+
+function threatLevel(nodes) {
+  const active = nodes.filter((n) => n.active).length;
+  if (active > 6) return "CRITICAL";
+  if (active > 3) return "HIGH";
+  if (active > 0) return "ELEVATED";
+  return "LOW";
 }

@@ -1,12 +1,7 @@
-export default function AlertFeed({ alerts = [] }) {
-  const defaults = [
-    { id: 1, severity: "high", text: "Brute-force pattern detected on 10.0.0.5" },
-    { id: 2, severity: "medium", text: "Unusual outbound traffic on port 4444" },
-    { id: 3, severity: "low", text: "Failed login spike from subnet 192.168.6.0/24" },
-    { id: 4, severity: "high", text: "Potential data exfil via DNS tunnel" },
-  ];
+import { useMemo } from "react";
 
-  const items = alerts.length > 0 ? alerts : defaults;
+export default function AlertFeed({ alerts = [] }) {
+  const items = useMemo(() => alerts, [alerts]);
 
   return (
     <div
@@ -18,6 +13,9 @@ export default function AlertFeed({ alerts = [] }) {
         color: "var(--iron-text)",
       }}
     >
+      {items.length === 0 && (
+        <div style={{ color: "var(--iron-dim)" }}>Waiting for alerts...</div>
+      )}
       {items.map((a) => {
         const color =
           a.severity === "high"
@@ -27,7 +25,7 @@ export default function AlertFeed({ alerts = [] }) {
             : "var(--iron-cyan)";
         return (
           <div
-            key={a.id}
+            key={a.id || a.text}
             style={{
               borderBottom: "1px solid rgba(0,229,255,0.08)",
               padding: "0.4rem 0",
@@ -44,7 +42,7 @@ export default function AlertFeed({ alerts = [] }) {
                 minWidth: 48,
               }}
             >
-              {a.severity.toUpperCase()}
+              {(a.severity || "INFO").toUpperCase()}
             </span>
             <span>{a.text}</span>
           </div>

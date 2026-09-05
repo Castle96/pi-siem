@@ -6,11 +6,10 @@ export default function ThreatMap({ events = [] }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     let raf;
 
-    const nodes = Array.from({ length: 24 }).map(() => ({
+    const fallback = Array.from({ length: 24 }).map(() => ({
       x: Math.random(),
       y: Math.random(),
       r: 1.5 + Math.random() * 2.5,
@@ -18,6 +17,8 @@ export default function ThreatMap({ events = [] }) {
       speed: 0.4 + Math.random() * 1.2,
       active: Math.random() < 0.18,
     }));
+
+    const nodes = events.length > 0 ? events : fallback;
 
     const draw = (t) => {
       const dpr = window.devicePixelRatio || 1;
@@ -87,7 +88,7 @@ export default function ThreatMap({ events = [] }) {
 
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [events]);
 
   return (
     <canvas

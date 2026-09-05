@@ -10,6 +10,10 @@ export default function CyberCard({ title, children, status = "cyan" }) {
         background: "rgba(5,7,10,0.85)",
         padding: "1.25rem",
         boxShadow: glow,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
       }}
     >
       <Corner position="top-left" />
@@ -30,7 +34,7 @@ export default function CyberCard({ title, children, status = "cyan" }) {
           {title}
         </h3>
       )}
-      {children}
+      <div style={{ flex: 1, minHeight: 0 }}>{children}</div>
     </div>
   );
 }
@@ -45,11 +49,11 @@ function Corner({ position }) {
   };
 
   const variants = {
-      "top-left": { top: -1, left: -1, borderTopWidth: 2, borderLeftWidth: 2 },
-      "top-right": { top: -1, right: -1, borderTopWidth: 2, borderRightWidth: 2 },
-      "bottom-left": { bottom: -1, left: -1, borderBottomWidth: 2, borderLeftWidth: 2 },
-      "bottom-right": { bottom: -1, right: -1, borderBottomWidth: 2, borderRightWidth: 2 },
-    };
+    "top-left": { top: -1, left: -1, borderTopWidth: 2, borderLeftWidth: 2 },
+    "top-right": { top: -1, right: -1, borderTopWidth: 2, borderRightWidth: 2 },
+    "bottom-left": { bottom: -1, left: -1, borderBottomWidth: 2, borderLeftWidth: 2 },
+    "bottom-right": { bottom: -1, right: -1, borderBottomWidth: 2, borderRightWidth: 2 },
+  };
 
   return <div style={{ ...style, ...variants[position] }} />;
 }

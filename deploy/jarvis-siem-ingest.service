@@ -1,0 +1,14 @@
+[Unit]
+Description=Jarvis SIEM Log Ingestion Pipeline
+After=network.target jarvis-siem.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/kyle/pi-siem
+ExecStart=/home/kyle/pi-siem/.venv/bin/python3 /home/kyle/pi-siem/siem_ingest.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

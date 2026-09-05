@@ -1,24 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
-function rand(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-export default function MetricsRail({ metrics }) {
+export default function MetricsRail({ metrics = [] }) {
   const canvasRef = useRef(null);
-  const [history, setHistory] = useState(() =>
-    Array.from({ length: 60 }).map(() => rand(20, 90))
-  );
+  const [history, setHistory] = useState(() => {
+    if (metrics.length > 0) return metrics.slice(-60);
+    return Array.from({ length: 60 }, () => 50);
+  });
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setHistory((h) => {
-        const next = [...h.slice(1), rand(20, 90)];
-        return next;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    if (metrics.length > 0) {
+      setHistory(metrics.slice(-60));
+    }
+  }, [metrics]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -40,6 +33,8 @@ export default function MetricsRail({ metrics }) {
       ctx.lineTo(w, y);
       ctx.stroke();
     }
+
+    if (history.length < 2) return;
 
     const step = w / (history.length - 1);
 
