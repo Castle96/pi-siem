@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 
 const WS_URL =
   typeof window !== "undefined"
-    ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`
+    ? (import.meta.env.VITE_WS_URL || `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`)
     : "ws://localhost:8170/ws";
 
 export function useSiemData() {
@@ -12,8 +12,11 @@ export function useSiemData() {
   const [agents, setAgents] = useState([]);
   const [voiceEvents, setVoiceEvents] = useState([]);
   const [voiceState, setVoiceState] = useState("idle");
+  const [voiceAction, setVoiceAction] = useState(null);
+  const [voiceStale, setVoiceStale] = useState(false);
   const [storage, setStorage] = useState([]);
   const [sync, setSync] = useState([]);
+  const [wsStatus, setWsStatus] = useState("CONNECTING");
   const wsRef = useRef(null);
   const reconnectTimer = useRef(null);
 
@@ -21,6 +24,8 @@ export function useSiemData() {
     try {
       const ws = new WebSocket(WS_URL);
       wsRef.current = ws;
+
+      ws.onopen = () => setWsStatus("LIVE");
 
       ws.onmessage = (evt) => {
         try {
@@ -38,6 +43,8 @@ export function useSiemData() {
           }
           if (Array.isArray(payload.storage)) setStorage(payload.storage);
           if (Array.isArray(payload.sync)) setSync(payload.sync);
+          if (payload.voiceAction) setVoiceAction(payload.voiceAction);
+          if (payload.voiceStale !== undefined) setVoiceStale(payload.voiceStale);
         } catch {
           // ignore malformed frames
         }
@@ -45,6 +52,7 @@ export function useSiemData() {
 
       ws.onclose = () => {
         wsRef.current = null;
+        setWsStatus("RECONNECTING");
         reconnectTimer.current = setTimeout(connect, 2000);
       };
 
@@ -63,6 +71,20 @@ export function useSiemData() {
       if (wsRef.current) wsRef.current.close();
     };
   }, [connect]);
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const resp = await fetch(`${window.location.origin}/api/tasks/history`);
+        const data = await resp.json();
+        if (data.tasks) setTasks(data.tasks);
+      } catch (e) {
+        console.error("Task fetch error:", e);
+      }
+    };
+    fetchTasks();
+    const interval = setInterval(fetchTasks, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
-  return { nodes, metrics, alerts, agents, voiceEvents, voiceState, storage, sync };
+  return { nodes, metrics, alerts, agents, tasks, voiceEvents, voiceState, voiceAction, voiceStale, storage, sync, wsStatus };
 }

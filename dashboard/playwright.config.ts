@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:8170',
+    baseURL: 'http://localhost:8171',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -19,8 +19,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'python3 ../jarvis_siem_server.py',
-    url: 'http://localhost:8170',
+    command: 'VOICE_TTS_ENGINE=none SIEM_PORT=8171 /home/kyle/pi-siem/.venv/bin/python3 ../jarvis_siem_server.py',
+    url: 'http://localhost:8171',
     reuseExistingServer: true,
   },
 });

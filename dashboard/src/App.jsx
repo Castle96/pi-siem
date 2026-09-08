@@ -19,17 +19,65 @@ import SystemMonitor from "./pages/SystemMonitor";
 import ServiceDiscovery from "./pages/ServiceDiscovery";
 import ClusterView from "./pages/ClusterView";
 
+const NAV_ITEMS = [
+  { id: "system", label: "SYS MON", color: "#00e5ff", hover: "rgba(0,229,255,0.15)" },
+  { id: "services", label: "SVCS", color: "#00ff9d", hover: "rgba(0,255,157,0.15)" },
+  { id: "cluster", label: "CLUSTER", color: "#ffae00", hover: "rgba(255,174,0,0.15)" },
+];
+
 export default function App() {
-  const { nodes, metrics, alerts, agents, voiceEvents, voiceState, storage, sync } = useSiemData();
+  const { nodes, metrics, alerts, agents, voiceEvents, voiceState, voiceAction, voiceStale, storage, sync, wsStatus } = useSiemData();
   const [clock, setClock] = useState(new Date());
   const headerRef = useRef(null);
   const [activePage, setActivePage] = useState(null);
-  const [showPageOverlay, setShowPageOverlay] = useState(false);
+  const [unackedCount, setUnackedCount] = useState(0);
+  const [anomalies, setAnomalies] = useState([]);
+  const lastVoiceActionRef = useRef(null);
 
   useEffect(() => {
     const id = setInterval(() => setClock(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Poll unacked alert count
+  useEffect(() => {
+    const fetchUnacked = () => {
+      fetch("/api/alerts/unacked_count")
+        .then(r => r.json())
+        .then(d => setUnackedCount(d.unacked || 0))
+        .catch(() => {});
+    };
+    fetchUnacked();
+    const id = setInterval(fetchUnacked, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Poll anomalies
+  useEffect(() => {
+    const fetchAnomalies = () => {
+      fetch("/api/anomalies")
+        .then(r => r.json())
+        .then(d => setAnomalies(d.anomalies || []))
+        .catch(() => {});
+    };
+    fetchAnomalies();
+    const id = setInterval(fetchAnomalies, 10000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Optional voice-driven navigation: "open system monitor" etc.
+  useEffect(() => {
+    if (!voiceAction) return;
+    if (lastVoiceActionRef.current === voiceAction.id) return;
+    lastVoiceActionRef.current = voiceAction.id;
+    const act = voiceAction.action || {};
+    if (act.open) {
+      const byId = { system: "system", services: "services", cluster: "cluster" };
+      setActivePage(byId[act.open] || null);
+    } else if (act.open === null) {
+      setActivePage(null);
+    }
+  }, [voiceAction]);
 
   useLayoutEffect(() => {
     const cards = document.querySelectorAll(".card-enter");
@@ -39,38 +87,20 @@ export default function App() {
     });
   }, []);
 
-  const openPage = (page) => {
-    setActivePage(page);
-    setShowPageOverlay(true);
-  };
+  const openPage = (page) => setActivePage(page);
+  const closePage = () => setActivePage(null);
 
-  const closePage = () => {
-    setShowPageOverlay(false);
-    setTimeout(() => setActivePage(null), 300);
-  };
+  // Close page overlays with the ESC key
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") closePage();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   return (
-    <div
-      style={{
-        padding: "0.6rem",
-        height: "100vh",
-        display: "grid",
-        gridTemplateRows: "auto 1fr auto",
-        gridTemplateColumns: "1fr 1.2fr 1fr",
-        gridTemplateAreas: `
-          "header header header"
-          "diag center storage"
-          "diag center feed"
-          "power kanban voice"
-        `,
-        gap: "0.6rem",
-        background: "transparent",
-        position: "relative",
-        zIndex: 2,
-        border: "1px solid rgba(0,229,255,0.1)",
-        borderRadius: 4,
-      }}
-    >
+    <div className="dashboard-grid">
       {/* Ambient particles background */}
       <Particles />
 
@@ -87,7 +117,7 @@ export default function App() {
           justifyContent: "space-between",
           alignItems: "center",
           borderBottom: "1px solid rgba(0,229,255,0.2)",
-          paddingBottom: "0.4rem",
+          paddingBottom: "0.35rem",
           fontFamily: "Share Tech Mono, monospace",
           letterSpacing: "0.1em",
           background: "rgba(5,7,10,0.7)",
@@ -119,8 +149,8 @@ export default function App() {
           }}
         >
           <DigitalClock />
-          <span className={`cursor-blink ${nodes.length > 0 || agents.length > 0 ? "" : "spinner"}`}>
-            WS: {nodes.length > 0 || agents.length > 0 ? "LIVE" : "CONNECTING"}
+          <span className={`cursor-blink ${wsStatus === "LIVE" ? "" : "spinner"}`}>
+            WS: {wsStatus}
           </span>
           <span style={{ color: "#00e5ff", textShadow: "0 0 6px #00e5ff" }}>
             THREAT: {threatLevel(nodes)}
@@ -155,6 +185,98 @@ export default function App() {
           </span>
         </div>
       </header>
+
+      {/* Footer with unacked alerts + WS status */}
+      <footer
+        style={{
+          gridArea: "footer",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderTop: "1px solid rgba(0,229,255,0.2)",
+          paddingTop: "0.25rem",
+          fontFamily: "Share Tech Mono, monospace",
+          fontSize: "0.6rem",
+          color: "var(--iron-dim)",
+          letterSpacing: "0.05em",
+        }}
+      >
+        <span>D.I.V.A // SIEM</span>
+        <span id="unacked-badge" style={{ color: unackedCount > 0 ? "#ff2a6d" : "#00ff9d", textShadow: unackedCount > 0 ? "0 0 6px #ff2a6d" : "none" }}>
+          UNACKED: {unackedCount}
+        </span>
+        <span style={{ color: anomalies.length > 0 ? "#ffae00" : "var(--iron-dim)", textShadow: anomalies.length > 0 ? "0 0 6px #ffae00" : "none" }}>
+          ANOMALIES: {anomalies.length}
+        </span>
+        <span>WS: {wsStatus}</span>
+      </footer>
+
+      {/* Navigation bar */}
+      <nav
+        style={{
+          gridArea: "nav",
+          display: "flex",
+          gap: "0.4rem",
+          padding: "0.35rem 0.4rem",
+          background: "rgba(5,7,10,0.5)",
+          border: "1px solid rgba(0,229,255,0.1)",
+          borderRadius: 3,
+          animation: "slideInBottom 0.5s ease-out",
+        }}
+      >
+        {NAV_ITEMS.map(item => {
+          const isActive = activePage === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => openPage(item.id)}
+              style={{
+                flex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.4rem",
+                padding: "0.35rem 0.6rem",
+                background: isActive ? item.hover : "transparent",
+                border: `1px solid ${isActive ? item.color + "66" : "rgba(0,229,255,0.1)"}`,
+                borderRadius: 3,
+                fontFamily: "Share Tech Mono, monospace",
+                fontSize: "0.7rem",
+                color: isActive ? item.color : "var(--iron-dim)",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                textShadow: isActive ? `0 0 6px ${item.color}` : "none",
+                letterSpacing: "0.05em",
+              }}
+              onMouseEnter={e => {
+                if (!isActive) {
+                  e.currentTarget.style.background = "rgba(0,229,255,0.06)";
+                  e.currentTarget.style.borderColor = "rgba(0,229,255,0.3)";
+                  e.currentTarget.style.color = "var(--iron-text)";
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isActive) {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.borderColor = "rgba(0,229,255,0.1)";
+                  e.currentTarget.style.color = "var(--iron-dim)";
+                }
+              }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: isActive ? item.color : "var(--iron-dim)", boxShadow: isActive ? `0 0 4px ${item.color}` : "none" }} />
+              {item.label}
+            </button>
+          );
+        })}
+
+        {/* Cluster quick scan inline */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", padding: "0.25rem 0.5rem", background: "rgba(255,174,0,0.05)", border: "1px solid rgba(255,174,0,0.15)", borderRadius: 3 }}>
+          <span className="spinner" style={{ width: 6, height: 6, borderColor: "#ffae00", borderTopColor: "#ffae00" }} />
+          <span style={{ color: "#ffae00", fontSize: "0.65rem", textShadow: "0 0 4px rgba(255,174,0,0.5)" }}>
+            CLUSTER: {nodes.filter(n => n.online).length}/{nodes.length}
+          </span>
+        </div>
+      </nav>
 
       {/* Left: Diagnostics */}
       <div style={{ gridArea: "diag", minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -221,32 +343,8 @@ export default function App() {
           status={voiceState === "speaking" ? "magenta" : "cyan"}
           pulse={voiceState !== "idle"}
         >
-          <div style={{ height: 140, minHeight: 120 }}>
-            <VoicePanel events={voiceEvents} />
-          </div>
-        </CyberCard>
-      </div>
-
-      {/* Page navigation trigger cards - smaller, in the bottom area */}
-      <div style={{ gridArea: "power", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", minHeight: 0 }}>
-        <CyberCard
-          title="SYSTEM MONITOR"
-          onClick={() => openPage("system")}
-          style={{ cursor: "pointer", height: "auto", minHeight: 100 }}
-        >
-          <div style={{ padding: "0.4rem 0.6rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span className="spinner" />
-            <span style={{ color: "var(--iron-cyan)", fontSize: "0.7rem" }}>CPU · RAM · DISK · NET</span>
-          </div>
-        </CyberCard>
-        <CyberCard
-          title="SERVICE DISCOVERY"
-          onClick={() => openPage("services")}
-          style={{ cursor: "pointer", height: "auto", minHeight: 100 }}
-        >
-          <div style={{ padding: "0.4rem 0.6rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span className="spinner" />
-            <span style={{ color: "#00ff9d", fontSize: "0.7rem" }}>SVCS · PORTS · SCAN</span>
+          <div style={{ height: 200, minHeight: 160 }}>
+            <VoicePanel events={voiceEvents} stale={voiceStale} headerVoiceState={voiceState} />
           </div>
         </CyberCard>
       </div>
@@ -254,16 +352,17 @@ export default function App() {
       <div className="global-scanlines" />
 
       {/* Page overlay */}
-      {showPageOverlay && (
+      {activePage && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.85)",
+            background: "rgba(0,0,0,0.9)",
             zIndex: 10000,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
+            animation: "fadeIn 0.25s ease-out",
           }}
           onClick={closePage}
         >
@@ -273,7 +372,7 @@ export default function App() {
               top: 0,
               left: 0,
               right: 0,
-              height: 40,
+              height: 44,
               background: "rgba(5,7,10,0.95)",
               borderBottom: "1px solid rgba(0,229,255,0.2)",
               display: "flex",
@@ -286,11 +385,11 @@ export default function App() {
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <span className="spinner" style={{ width: 8, height: 8 }} />
-              <span className="header-glitch glitch-text" style={{ color: "var(--iron-cyan)", fontSize: "0.85rem", textShadow: "0 0 8px rgba(0,229,255,0.5)", letterSpacing: "0.1em" }}>
-                {activePage === "system" && "SYSTEM MONITOR // LIVE"}
-                {activePage === "services" && "SERVICE DISCOVERY // LIVE"}
-                {activePage === "cluster" && "CLUSTER VIEW // LIVE"}
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--iron-cyan)", boxShadow: "0 0 8px rgba(0,229,255,0.7)" }} />
+              <span className="header-glitch glitch-text" style={{ color: "var(--iron-cyan)", fontSize: "0.9rem", textShadow: "0 0 10px rgba(0,229,255,0.5)", letterSpacing: "0.12em" }}>
+                {activePage === "system" && "SYSTEM MONITOR"}
+                {activePage === "services" && "SERVICE DISCOVERY"}
+                {activePage === "cluster" && "CLUSTER VIEW"}
               </span>
             </div>
             <button
@@ -299,26 +398,27 @@ export default function App() {
                 background: "transparent",
                 border: "1px solid rgba(0,229,255,0.3)",
                 color: "var(--iron-cyan)",
-                padding: "0.3rem 0.8rem",
+                padding: "0.35rem 1rem",
                 fontFamily: "Share Tech Mono, monospace",
                 fontSize: "0.7rem",
                 cursor: "pointer",
                 borderRadius: 2,
+                letterSpacing: "0.05em",
                 transition: "all 0.2s ease",
               }}
               onMouseEnter={e => {
-                e.target.style.background = "rgba(0,229,255,0.1)";
-                e.target.style.borderColor = "rgba(0,229,255,0.6)";
+                e.currentTarget.style.background = "rgba(0,229,255,0.12)";
+                e.currentTarget.style.borderColor = "rgba(0,229,255,0.6)";
               }}
               onMouseLeave={e => {
-                e.target.style.background = "transparent";
-                e.target.style.borderColor = "rgba(0,229,255,0.3)";
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.borderColor = "rgba(0,229,255,0.3)";
               }}
             >
               CLOSE [ESC]
             </button>
           </div>
-          <div style={{ flex: 1, overflow: "auto", padding: "0.6rem" }} onClick={e => e.stopPropagation()}>
+          <div style={{ flex: 1, overflow: "auto", padding: "0.6rem", paddingTop: 52 }} onClick={e => e.stopPropagation()}>
             {activePage === "system" && <SystemMonitor />}
             {activePage === "services" && <ServiceDiscovery />}
             {activePage === "cluster" && <ClusterView />}

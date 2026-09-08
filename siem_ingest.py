@@ -16,6 +16,7 @@ from siem_data import add_alert, add_voice_event, record_metric, get_conn, DB_EV
 # Patterns for log parsing
 RE_SSH_FAIL = re.compile(r"Failed password for .* from (\d+\.\d+\.\d+\.\d+)")
 RE_SSH_INVALID = re.compile(r"Invalid user .* from (\d+\.\d+\.\d+\.\d+)")
+RE_SSH_ROOT_FAIL = re.compile(r"Failed password for root from (\d+\.\d+\.\d+\.\d+)")
 RE_PORT_SCAN = re.compile(r"port (\d+) .* (scan|probe)")
 RE_DNS_TUNNEL = re.compile(r"(tunnel|exfil|dns).*", re.IGNORECASE)
 RE_METRIC_CPU = re.compile(r"cpu[:=]\s*([\d.]+)")
@@ -23,6 +24,11 @@ RE_METRIC_MEM = re.compile(r"mem[:=]\s*([\d.]+)")
 RE_VOICE_STATE = re.compile(r"voice[_\s]state[=:]\s*(\w+)")
 RE_VOICE_TEXT = re.compile(r"voice[_\s]text[=:]\s*(.+)")
 RE_VOICE_SOURCE = re.compile(r"voice[_\s]source[=:]\s*(\w+)")
+# auth.log SSH patterns
+RE_AUTH_SSH_FAIL = re.compile(r'Failed (?:password|publickey) for .* from (\d+\.\d+\.\d+\.\d+)')
+RE_AUTH_INVALID_USER = re.compile(r'Invalid user (\S+) from (\d+\.\d+\.\d+\.\d+)')
+RE_AUTH_TIMEOUT = re.compile(r"Connection closed by authenticating user .* (\d+\.\d+\.\d+\.\d+) \[preauth\]")
+RE_AUTH_BRUTE_FORCE = re.compile(r"BLOCKED HOST.*from (\d+\.\d+\.\d+\.\d+)")
 
 
 def parse_line(line: str, source: str):
@@ -31,10 +37,17 @@ def parse_line(line: str, source: str):
     lower = line.lower()
 
     # SSH brute force
-    m = RE_SSH_FAIL.search(line) or RE_SSH_INVALID.search(line)
+    m = RE_SSH_FAIL.search(line) or RE_SSH_INVALID.search(line) or RE_SSH_ROOT_FAIL.search(line)
     if m:
         ip = m.group(1)
         add_alert("high", f"SSH dictionary attack from {ip}")
+        return
+
+    # auth.log SSH failures
+    m = RE_AUTH_SSH_FAIL.search(line) or RE_AUTH_INVALID_USER.search(line) or RE_AUTH_TIMEOUT.search(line) or RE_AUTH_BRUTE_FORCE.search(line)
+    if m:
+        ip = m.group(1)
+        add_alert("high", f"SSH auth failure from {ip}")
         return
 
     # Port scan
@@ -143,6 +156,10 @@ def get_default_log_paths():
         base / "jarvis_dashboard_patch.py",
         base / "loadbalancer.log",
     ]
+    # Add auth.log if readable
+    auth_log = Path("/var/log/auth.log")
+    if auth_log.exists():
+        paths.append(auth_log)
     return [p for p in paths if p.exists()]
 
 

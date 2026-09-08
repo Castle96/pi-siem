@@ -24,7 +24,29 @@ html, body, #root {
   overflow-x: hidden;
 }
 
-/* ── Full page pulsation layer - slower ── */
+/* ── Ambient grid ── */
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--iron-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--iron-grid) 1px, transparent 1px);
+  background-size: 30px 30px;
+  background-position: center center;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+  animation: gridPulseFast 3s ease-in-out infinite;
+}
+
+@keyframes gridPulseFast {
+  0%, 100% { opacity: 0.4; background-size: 30px 30px; }
+  33% { opacity: 0.85; background-size: 32px 32px; }
+  66% { opacity: 0.6; background-size: 28px 28px; }
+}
+
+/* ── Full page pulsation layer ── */
 #pulse-overlay {
   position: fixed;
   inset: 0;
@@ -77,271 +99,7 @@ html, body, #root {
   }
 }
 
-/* ── Sync-pulsing rings ── */
-#sync-rings {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-
-.sync-ring {
-  position: absolute;
-  border: 1px solid rgba(0, 229, 255, 0.15);
-  border-radius: 50%;
-  opacity: 0;
-  animation: syncRingPulse 8s ease-in-out infinite;
-  transform-origin: center center;
-}
-
-.sync-ring:nth-child(1) {
-  width: 200px;
-  height: 200px;
-  top: 10%;
-  left: 10%;
-  animation-delay: 0s;
-  border-color: rgba(0, 229, 255, 0.2);
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.1), inset 0 0 15px rgba(0, 229, 255, 0.05);
-}
-
-.sync-ring:nth-child(2) {
-  width: 350px;
-  height: 350px;
-  top: 20%;
-  right: 15%;
-  animation-delay: 2s;
-  border-color: rgba(255, 42, 109, 0.15);
-  box-shadow: 0 0 15px rgba(255, 42, 109, 0.08), inset 0 0 15px rgba(255, 42, 109, 0.04);
-}
-
-.sync-ring:nth-child(3) {
-  width: 300px;
-  height: 300px;
-  bottom: 15%;
-  left: 20%;
-  animation-delay: 4s;
-  border-color: rgba(0, 255, 157, 0.15);
-  box-shadow: 0 0 15px rgba(0, 255, 157, 0.08), inset 0 0 15px rgba(0, 255, 157, 0.04);
-}
-
-.sync-ring:nth-child(4) {
-  width: 400px;
-  height: 400px;
-  top: 5%;
-  right: 30%;
-  animation-delay: 1s;
-  border-color: rgba(255, 174, 0, 0.12);
-  box-shadow: 0 0 15px rgba(255, 174, 0, 0.06), inset 0 0 15px rgba(255, 174, 0, 0.03);
-}
-
-.sync-ring:nth-child(5) {
-  width: 250px;
-  height: 250px;
-  bottom: 25%;
-  right: 10%;
-  animation-delay: 5s;
-  border-color: rgba(179, 0, 255, 0.15);
-  box-shadow: 0 0 15px rgba(179, 0, 255, 0.08), inset 0 0 15px rgba(179, 0, 255, 0.04);
-}
-
-.sync-ring:nth-child(6) {
-  width: 150px;
-  height: 150px;
-  top: 40%;
-  left: 35%;
-  animation-delay: 3s;
-  border-color: rgba(0, 229, 255, 0.2);
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.15), inset 0 0 20px rgba(0, 229, 255, 0.08);
-}
-
-.sync-ring:nth-child(7) {
-  width: 500px;
-  height: 500px;
-  top: 30%;
-  left: 15%;
-  animation-delay: 6s;
-  border-color: rgba(255, 42, 109, 0.1);
-  box-shadow: 0 0 20px rgba(255, 42, 109, 0.05), inset 0 0 20px rgba(255, 42, 109, 0.03);
-}
-
-.sync-ring:nth-child(8) {
-  width: 180px;
-  height: 180px;
-  bottom: 30%;
-  left: 50%;
-  animation-delay: 4.5s;
-  border-color: rgba(0, 255, 157, 0.18);
-  box-shadow: 0 0 12px rgba(0, 255, 157, 0.1), inset 0 0 12px rgba(0, 255, 157, 0.05);
-}
-
-@keyframes syncRingPulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.15;
-    border-color: inherit;
-  }
-  25% {
-    transform: scale(1.05);
-    opacity: 0.4;
-    filter: brightness(1.2);
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.25;
-    border-color: rgba(255, 42, 109, 0.2) !important;
-    box-shadow: 0 0 25px rgba(255, 42, 109, 0.15) !important;
-  }
-  75% {
-    transform: scale(1.03);
-    opacity: 0.35;
-    filter: brightness(1.1);
-  }
-}
-
-/* Also pulse a secondary ring layer for more depth */
-#sync-rings-secondary {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-
-.sync-ring-secondary {
-  position: absolute;
-  border: 1px dashed rgba(0, 229, 255, 0.08);
-  border-radius: 50%;
-  opacity: 0.3;
-  animation: syncRingPulseSecondary 12s linear infinite;
-}
-
-.sync-ring-secondary:nth-child(1) {
-  width: 450px;
-  height: 450px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation-delay: 0s;
-  border-color: rgba(0, 229, 255, 0.1);
-  box-shadow: 0 0 30px rgba(0, 229, 255, 0.03);
-}
-
-.sync-ring-secondary:nth-child(2) {
-  width: 320px;
-  height: 320px;
-  top: 30%;
-  left: 70%;
-  animation-delay: 3s;
-  border-color: rgba(255, 42, 109, 0.08);
-}
-
-.sync-ring-secondary:nth-child(3) {
-  width: 380px;
-  height: 380px;
-  top: 60%;
-  left: 10%;
-  animation-delay: 6s;
-  border-color: rgba(0, 255, 157, 0.08);
-}
-
-@keyframes syncRingPulseSecondary {
-  0%, 100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.2;
-  }
-  33% {
-    transform: translate(-50%, -50%) scale(1.1);
-    opacity: 0.5;
-  }
-  66% {
-    transform: translate(-50%, -50%) scale(0.95);
-    opacity: 0.3;
-  }
-}
-
-/* ── Ambient grid - slower, subtler ── */
-#root::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--iron-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--iron-grid) 1px, transparent 1px);
-  background-size: 40px 40px;
-  background-position: center center;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.5;
-  animation: gridPulse 6s ease-in-out infinite;
-}
-
-@keyframes gridPulse {
-  0%, 100% { opacity: 0.4; background-size: 40px 40px; }
-  50% { opacity: 0.6; background-size: 42px 42px; }
-}
-
-/* ── Scanlines - slower ── */
-.global-scanlines {
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.2) 0px,
-    rgba(0, 0, 0, 0.2) 1px,
-    transparent 1px,
-    transparent 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-  mix-blend-mode: overlay;
-  animation: scan 8s linear infinite;
-}
-
-@keyframes scan {
-  from { background-position-y: 0; }
-  to { background-position-y: 100%; }
-}
-
-/* ── Flicker effect - slower ── */
-.flicker {
-  animation: flicker 5s infinite;
-}
-
-@keyframes flicker {
-  0%, 100% { opacity: 1; }
-  3% { opacity: 0.85; }
-  6% { opacity: 1; }
-  7% { opacity: 0.9; }
-  10% { opacity: 1; }
-  70% { opacity: 1; }
-  71% { opacity: 0.95; }
-  72% { opacity: 1; }
-}
-
-/* ── Ambient grid with aggressive pulse ── */
-#root::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--iron-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--iron-grid) 1px, transparent 1px);
-  background-size: 30px 30px;
-  background-position: center center;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.6;
-  animation: gridPulseFast 3s ease-in-out infinite;
-}
-
-@keyframes gridPulseFast {
-  0%, 100% { opacity: 0.4; background-size: 30px 30px; }
-  33% { opacity: 0.85; background-size: 32px 32px; }
-  66% { opacity: 0.6; background-size: 28px 28px; }
-}
-
-/* ── Scanlines - faster ── */
+/* ── Scanlines ── */
 .global-scanlines {
   position: fixed;
   inset: 0;
@@ -363,7 +121,51 @@ html, body, #root {
   to { background-position-y: 100%; }
 }
 
-/* ── Flicker effect - more aggressive ── */
+/* ── Ambient sine sweep ── */
+@keyframes ambientSweep {
+  0% { transform: translateX(-100%) rotate(0deg); }
+  100% { transform: translateX(200%) rotate(360deg); }
+}
+
+.sine-sweep {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 229, 255, 0.03) 50%,
+    transparent 100%
+  );
+  animation: ambientSweep 8s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: screen;
+}
+
+/* ── CRT vignette ── */
+#root::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  pointer-events: none;
+  z-index: 9998;
+  animation: vignettePulse 4s ease-in-out infinite;
+}
+
+@keyframes vignettePulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 0.5; }
+}
+
+/* ── Flicker effect ── */
 .flicker {
   animation: flickerAggressive 3s infinite;
 }
@@ -387,27 +189,7 @@ html, body, #root {
   88% { opacity: 1; }
 }
 
-/* ── CRT vignette ── */
-#root::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 40%,
-    rgba(0, 0, 0, 0.5) 100%
-  );
-  pointer-events: none;
-  z-index: 9998;
-  animation: vignettePulse 4s ease-in-out infinite;
-}
-
-@keyframes vignettePulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 0.5; }
-}
-
-/* ── Border glow animations - faster ── */
+/* ── Border glow animations ── */
 @keyframes borderPulse {
   0%, 100% { border-color: rgba(0, 229, 255, 0.2); box-shadow: 0 0 15px rgba(0, 229, 255, 0.2); }
   50% { border-color: rgba(0, 229, 255, 0.6); box-shadow: 0 0 30px rgba(0, 229, 255, 0.5), 0 0 60px rgba(0, 229, 255, 0.15); }
@@ -430,73 +212,15 @@ html, body, #root {
   }
 }
 
-/* ── Header glow pulse - aggressive ── */
-@keyframes headerGlow {
-  0%, 100% {
-    text-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
-  }
-  25% {
-    text-shadow: 0 0 20px rgba(0, 229, 255, 0.9), 0 0 50px rgba(0, 229, 255, 0.3), 0 0 80px rgba(0, 229, 255, 0.1);
-  }
-  50% {
-    text-shadow: 0 0 15px rgba(0, 229, 255, 0.7), 0 0 40px rgba(0, 229, 255, 0.2);
-  }
-  75% {
-    text-shadow: 0 0 25px rgba(255, 42, 109, 0.5), 0 0 60px rgba(255, 42, 109, 0.2);
-  }
+/* ── Slide / fade entrances ── */
+@keyframes slideInBottom {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Floating particles - aggressive speed ── */
-#particles {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-}
-
-.particle {
-  position: absolute;
-  width: 2px;
-  height: 2px;
-  background: var(--iron-cyan);
-  border-radius: 50%;
-  box-shadow: 0 0 8px var(--iron-cyan);
-  animation: floatUpFast linear infinite;
-  opacity: 0.8;
-}
-
-@keyframes floatUpFast {
-  0% {
-    transform: translateY(100vh) translateX(0) scale(1);
-    opacity: 0;
-  }
-  5% { opacity: 0.9; }
-  15% { opacity: 0.9; }
-  85% { opacity: 0.7; }
-  95% { opacity: 0.4; }
-  100% {
-    transform: translateY(-150px) translateX(80px) scale(0.5);
-    opacity: 0;
-  }
-}
-
-/* ── Panic mode - occasional screen shake ── */
-@keyframes screenShake {
-  0%, 100% { transform: translate(0, 0); }
-  10% { transform: translate(-2px, 1px); }
-  20% { transform: translate(2px, -1px); }
-  30% { transform: translate(-1px, 2px); }
-  40% { transform: translate(1px, -2px); }
-  50% { transform: translate(-2px, -1px); }
-  60% { transform: translate(2px, 1px); }
-  70% { transform: translate(-1px, -2px); }
-  80% { transform: translate(1px, 2px); }
-  90% { transform: translate(-2px, 0); }
-}
-
-.panic-mode {
-  animation: screenShake 0.15s infinite;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* ── Glitch text effect ── */
@@ -525,7 +249,7 @@ html, body, #root {
   96% { transform: translate(-1px, 0); text-shadow: 1px 0 var(--iron-magenta), -1px 0 var(--iron-cyan); }
 }
 
-/* ── Alert pulse - aggressive ── */
+/* ── Alert pulse ── */
 @keyframes alertPulse {
   0%, 100% {
     background: rgba(255, 42, 109, 0.05);
@@ -541,29 +265,6 @@ html, body, #root {
 
 .alert-pulse {
   animation: alertPulse 1.5s ease-in-out infinite;
-}
-
-/* ── Byte blink effect for data displays ── */
-@keyframes bytePulse {
-  0%, 100% { opacity: 1; }
-  10% { opacity: 0.6; }
-  20% { opacity: 1; }
-  80% { opacity: 0.7; }
-  90% { opacity: 0.9; }
-}
-
-.byte-pulse {
-  animation: bytePulse 0.8s ease-in-out infinite;
-}
-
-/* ── Voltage bar style for metrics ── */
-@keyframes voltageHum {
-  0%, 100% { height: 100%; }
-  50% { height: 92%; }
-}
-
-.voltage-bar {
-  animation: voltageHum 1.5s ease-in-out infinite;
 }
 
 /* ── Card entrance staggered ── */
@@ -612,26 +313,68 @@ html, body, #root {
   animation: spin 0.4s linear infinite;
 }
 
-/* ── Synced ambient sine wave ── */
-@keyframes ambientSweep {
-  0% { transform: translateX(-100%) rotate(0deg); }
-  100% { transform: translateX(200%) rotate(360deg); }
+/* ── Dashboard layout grid ── */
+.dashboard-grid {
+  padding: 0.6rem;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto auto 1fr 1fr auto auto;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  grid-template-areas:
+    "header header header"
+    "nav nav nav"
+    "diag center storage"
+    "diag center feed"
+    "power kanban voice"
+    "footer footer footer";
+  gap: 0.5rem;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+  border: 1px solid rgba(0, 229, 255, 0.1);
+  border-radius: 4px;
 }
 
-.sine-sweep {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 200%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(0, 229, 255, 0.03) 50%,
-    transparent 100%
-  );
-  animation: ambientSweep 8s linear infinite;
-  pointer-events: none;
-  z-index: 0;
-  mix-blend-mode: screen;
+@media (max-width: 1100px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto auto auto auto auto auto;
+    grid-template-areas:
+      "header header"
+      "nav nav"
+      "center center"
+      "diag storage"
+      "feed kanban"
+      "power voice"
+      "footer footer";
+  }
+}
+
+@media (max-width: 700px) {
+  .dashboard-grid {
+    height: auto;
+    min-height: 100vh;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "header"
+      "nav"
+      "center"
+      "diag"
+      "storage"
+      "feed"
+      "power"
+      "kanban"
+      "voice"
+      "footer";
+  }
+}
+
+/* ── Respect reduced-motion preferences ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
 }

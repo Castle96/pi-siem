@@ -11,3 +11,6 @@ __pycache__
 *.sqlite*
 *.db-wal
 *.db-shm
+data/endpoints.json
+data/custom_servers.json
+data/pv_access_key.txt

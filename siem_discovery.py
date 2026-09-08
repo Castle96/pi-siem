@@ -1,15 +1,16 @@
 """
 siem_discovery.py — Service discovery and cluster monitoring for Jarvis SIEM.
-Discovers: systemd services, listening ports, cluster nodes (jarvis/ray/fleet), docker containers.
+Discovers: systemd services, listening ports, cluster nodes (from the endpoint
+registry), docker containers.
 Exposes: /api/services, /api/ports, /api/cluster
+
+Remote scanning is delegated to the unified engine in siem_network.py.
 """
 
 import json
-import os
 import subprocess
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from pathlib import Path
 
 try:
     import psutil
@@ -21,15 +22,7 @@ try:
 except ImportError:
     requests = None
 
-# Cluster node configs from existing cluster_config.py
-CLUSTER_NODES = [
-    {"hostname": "jarvis", "tailscale_ip": "100.77.187.108", "role": "orchestrator", "lan_ip": "192.168.6.237"},
-    {"hostname": "ray", "tailscale_ip": "100.87.90.103", "role": "worker", "lan_ip": "192.168.6.238"},
-    {"hostname": "fleet", "tailscale_ip": "100.120.75.92", "role": "worker", "lan_ip": "192.168.6.236"},
-]
-
-SSH_PORT = 1023
-SSH_USER = "kyle"
+from siem_network import registry, scan_entry, cluster_node_payload
 
 
 def get_systemd_services():
@@ -72,13 +65,13 @@ def get_inactive_services():
 
 
 def get_listening_ports():
-    """Get all listening TCP/UDP ports."""
+    """Get all listening TCP/UDP ports (protocol normalized to tcp/udp)."""
     ports = []
     if psutil:
         for conn in psutil.net_connections(kind="inet"):
             if conn.status == "LISTEN" and conn.laddr:
                 ports.append({
-                    "protocol": conn.type.name,
+                    "protocol": "tcp" if conn.type == getattr(psutil, "SOCK_STREAM", 1) else "udp",
                     "local_addr": f"{conn.laddr.ip}:{conn.laddr.port}",
                     "pid": conn.pid,
                     "process": _get_process_name(conn.pid) if conn.pid else None,
@@ -122,93 +115,30 @@ def _get_process_name(pid):
 
 
 def scan_cluster_node(node):
-    """Scan a cluster node via SSH to get its status."""
-    result = {
-        "hostname": node["hostname"],
-        "tailscale_ip": node["tailscale_ip"],
-        "lan_ip": node["lan_ip"],
-        "role": node["role"],
-        "online": False,
-        "services_count": 0,
-        "active_services": [],
-        "listening_ports": [],
-        "disk_usage": [],
-        "memory_percent": None,
-        "cpu_percent": None,
-        "last_checked": None,
-        "error": None,
-    }
-
-    # Try LAN first, then tailnet
-    for ip in [node["lan_ip"], node["tailscale_ip"]]:
-        if not ip:
-            continue
-        result = _ssh_scan(node, ip, result)
-        if result["online"]:
-            break
-
-    result["last_checked"] = datetime.now(timezone.utc).isoformat()
-    return result
-
-
-def _ssh_scan(node, ip, result):
-    """Try to SSH into a node and gather info."""
-    commands = [
-        "systemctl list-units --type=service --state=active --no-legend --no-pager 2>/dev/null | wc -l",
-        "systemctl list-units --type=service --all --no-legend --no-pager 2>/dev/null | grep -cE '(active|running)'",
-        "df -h / /mnt/cluster 2>/dev/null | tail -n +2 | awk '{print $5}' | tr -d '%'",
-        "free -m 2>/dev/null | awk '/Mem:/{print $3/$2*100}'",
-        "top -bn1 2>/dev/null | grep 'Cpu(s)' | awk '{print $2}'",
-        "ss -tlnp 2>/dev/null | grep LISTEN | wc -l",
-    ]
-
-    for cmd in commands:
-        try:
-            proc = subprocess.run(
-                ["ssh", "-o", "StrictHostKeyChecking=no", "-o", "ConnectTimeout=3",
-                 "-o", "BatchMode=yes", "-p", str(SSH_PORT), f"{SSH_USER}@{ip}", cmd],
-                capture_output=True, text=True, timeout=10
-            )
-            if proc.returncode == 0:
-                result["online"] = True
-                output = proc.stdout.strip()
-                if "wc -l" in cmd and output:
-                    result["services_count"] = int(output)
-                elif "grep -cE" in cmd and output:
-                    result["active_services_count"] = int(output)
-                elif "df -h" in cmd and output:
-                    result["disk_usage"] = [{"mountpoint": "/", "percent": int(p)} for p in output.split() if p.isdigit()]
-                elif "free -m" in cmd and output:
-                    try:
-                        result["memory_percent"] = float(output)
-                    except ValueError:
-                        pass
-                elif "top -bn1" in cmd and output:
-                    try:
-                        result["cpu_percent"] = float(output.replace(",", ""))
-                    except ValueError:
-                        pass
-                elif "ss -tlnp" in cmd and output:
-                    result["listening_ports_count"] = int(output)
-                break
-        except Exception as e:
-            result["error"] = str(e)
-
-    return result
+    """Scan a cluster node (registry entry) via the unified engine."""
+    entry = node if isinstance(node, dict) and node.get("ips") else registry.get(node.get("ip") if isinstance(node, dict) else node)
+    if not entry:
+        return {"error": "unknown node", "online": False}
+    result = scan_entry(entry)
+    payload = cluster_node_payload(entry, result)
+    payload["last_checked"] = datetime.now(timezone.utc).isoformat()
+    return payload
 
 
 def scan_all_cluster():
-    """Scan all cluster nodes."""
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
+    """Scan all cluster nodes (from the registry) in parallel."""
+    nodes = registry.cluster()
     results = []
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        futures = {executor.submit(scan_cluster_node, node): node for node in CLUSTER_NODES}
+    with ThreadPoolExecutor(max_workers=max(3, len(nodes))) as executor:
+        futures = {executor.submit(scan_entry, node): node for node in nodes}
         for future in as_completed(futures):
-            results.append(future.result())
-
-    # Sort by online status
-    results.sort(key=lambda x: (not x["online"], x["hostname"]))
+            entry = futures[future]
+            try:
+                res = future.result()
+            except Exception:
+                res = {"error": "scan failed", "online": False}
+            results.append(cluster_node_payload(entry, res))
+    results.sort(key=lambda x: (not x["online"], x["hostname"] or ""))
     return results
 
 
@@ -251,7 +181,7 @@ if __name__ == "__main__":
     elif len(sys.argv) > 1 and sys.argv[1] == "cluster":
         print(json.dumps(get_cluster_summary(), indent=2))
     elif len(sys.argv) > 1 and sys.argv[1] == "node" and len(sys.argv) > 2:
-        node = next((n for n in CLUSTER_NODES if n["hostname"] == sys.argv[2]), None)
+        node = next((n for n in registry.cluster() if n.get("label") == sys.argv[2] or sys.argv[2] in (n.get("ips") or [])), None)
         if node:
             print(json.dumps(scan_cluster_node(node), indent=2))
         else:

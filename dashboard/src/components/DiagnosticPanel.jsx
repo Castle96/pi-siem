@@ -1,9 +1,64 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function DiagnosticPanel({ metrics = [], alerts = [] }) {
-  const cpu = metrics.length > 0 ? metrics[metrics.length - 1] : 0;
-  const mem = metrics.length > 1 ? metrics[metrics.length - 2] : 0;
-  const net = Math.abs(Math.sin(Date.now() / 10000)) * 100;
+const POLL_MS = 3000;
+
+export default function DiagnosticPanel({ metrics = [] }) {
+  const [realtime, setRealtime] = useState(null);
+  const [net, setNet] = useState({ up: null, down: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    let prevBytes = null;
+
+    const fetchAll = () => {
+      // Live CPU/memory/load snapshot
+      fetch("/api/metrics/realtime")
+        .then(r => r.json())
+        .then(d => {
+          if (!cancelled) setRealtime(d);
+        })
+        .catch(() => {});
+
+      // Network throughput derived from interface byte counters
+      fetch("/api/system")
+        .then(r => r.json())
+        .then(d => {
+          if (cancelled) return;
+          const ifaces = d.network?.interfaces || {};
+          const bytes = Object.values(ifaces).reduce(
+            (acc, i) => ({
+              up: acc.up + (i.bytes_sent || 0),
+              down: acc.down + (i.bytes_recv || 0),
+            }),
+            { up: 0, down: 0 }
+          );
+          if (prevBytes) {
+            const dt = POLL_MS / 1000;
+            const up = ((bytes.up - prevBytes.up) * 8) / dt / 1e6;
+            const down = ((bytes.down - prevBytes.down) * 8) / dt / 1e6;
+            setNet({ up: Math.max(0, up), down: Math.max(0, down) });
+          }
+          prevBytes = bytes;
+        })
+        .catch(() => {});
+    };
+
+    fetchAll();
+    const id = setInterval(fetchAll, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const cpu = Math.round(realtime?.cpu ?? metrics[metrics.length - 1] ?? 0);
+  const mem = Math.round(realtime?.memory ?? metrics[metrics.length - 2] ?? 0);
+  // Real recent CPU history (falls back to a flat live value)
+  const history = metrics.length >= 6 ? metrics.slice(-6) : Array(6).fill(cpu);
+  const loadavg = realtime?.loadavg
+    ? `${realtime.loadavg["1min"]?.toFixed(1)} / ${realtime.loadavg["5min"]?.toFixed(1)} / ${realtime.loadavg["15min"]?.toFixed(1)}`
+    : "—";
+  const uptime = fmtUptime(realtime?.uptime) || "—";
 
   return (
     <div
@@ -44,7 +99,7 @@ export default function DiagnosticPanel({ metrics = [], alerts = [] }) {
             </linearGradient>
           </defs>
           <text x="100" y="95" textAnchor="middle" fill="#e0f7fa" fontSize="24" fontWeight="bold">
-            {Math.round(cpu)}%
+            {cpu}%
           </text>
           <text x="100" y="110" textAnchor="middle" fill="var(--iron-dim)" fontSize="10">
             CPU LOAD
@@ -52,28 +107,33 @@ export default function DiagnosticPanel({ metrics = [], alerts = [] }) {
         </svg>
       </div>
 
-      {/* Vertical bar graph */}
+      {/* Vertical bar graph: last 6 real CPU readings */}
       <div style={{ display: "flex", gap: "0.4rem", height: 80, alignItems: "flex-end" }}>
-        {[65, 78, 45, 88, 52, 70].map((v, i) => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              height: `${v}%`,
-              background: `linear-gradient(to top, rgba(0,229,255,0.3), rgba(0,229,255,0.8))`,
-              borderTop: `2px solid #00e5ff`,
-              boxShadow: "0 0 8px rgba(0,229,255,0.3)",
-            }}
-          />
-        ))}
+        {history.map((v, i) => {
+          const pct = Math.max(2, Math.min(100, v));
+          return (
+            <div
+              key={i}
+              style={{
+                flex: 1,
+                height: `${pct}%`,
+                background: `linear-gradient(to top, rgba(0,229,255,0.3), rgba(0,229,255,0.8))`,
+                borderTop: `2px solid #00e5ff`,
+                boxShadow: "0 0 8px rgba(0,229,255,0.3)",
+                transition: "height 0.4s ease",
+              }}
+            />
+          );
+        })}
       </div>
 
-      {/* Status rows */}
+      {/* Real status rows */}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "auto" }}>
-        <StatusRow label="AUXILIARY FAN" value="NORMAL" color="#00ff9d" />
-        <StatusRow label="CPU FAN" value={`${Math.round(1200 + cpu * 20)} RPM`} color="#00e5ff" />
-        <StatusRow label="UPLINK" value={`${net.toFixed(1)} Mb/s`} color="#00e5ff" />
-        <StatusRow label="DOWNLINK" value={`${(net * 0.7).toFixed(1)} Mb/s`} color="#ffae00" />
+        <StatusRow label="MEMORY" value={`${mem}%`} color={mem > 85 ? "#ff2a6d" : "#00e5ff"} />
+        <StatusRow label="LOAD AVG" value={loadavg} color="#00e5ff" />
+        <StatusRow label="UPTIME" value={uptime} color="#00e5ff" />
+        <StatusRow label="UPLINK" value={net.up != null ? `${net.up.toFixed(2)} Mb/s` : "—"} color="#00e5ff" />
+        <StatusRow label="DOWNLINK" value={net.down != null ? `${net.down.toFixed(2)} Mb/s` : "—"} color="#ffae00" />
       </div>
 
       <style>{`
@@ -84,6 +144,16 @@ export default function DiagnosticPanel({ metrics = [], alerts = [] }) {
       `}</style>
     </div>
   );
+}
+
+function fmtUptime(s) {
+  if (typeof s !== "number" || !isFinite(s) || s <= 0) return null;
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${Math.floor(s % 60)}s`;
 }
 
 function StatusRow({ label, value, color }) {

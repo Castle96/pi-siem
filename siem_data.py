@@ -100,11 +100,33 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT NOT NULL,
             metric_type TEXT NOT NULL,
-            value REAL NOT NULL
+            value REAL NOT NULL,
+            host TEXT DEFAULT 'local'
+        )
+    """)
+    _ensure_metrics_host_column(conn)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            host TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            signature TEXT NOT NULL,
+            ts TEXT NOT NULL,
+            UNIQUE(host, kind)
         )
     """)
     conn.commit()
     conn.close()
+
+
+def _ensure_metrics_host_column(conn):
+    """Add the host column to older metrics tables that predate multi-endpoint support."""
+    try:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(metrics)").fetchall()]
+        if "host" not in cols:
+            conn.execute("ALTER TABLE metrics ADD COLUMN host TEXT DEFAULT 'local'")
+    except Exception:
+        pass
 
 
 def seed_demo_data():
@@ -173,15 +195,36 @@ def get_nodes():
     return nodes
 
 
-def get_metrics(limit=60):
-    """Get recent metrics history."""
+def get_metrics(metric_type="cpu_usage", host="local", limit=60):
+    """Get recent metrics history for a host."""
     conn = get_conn(DB_METRICS)
     rows = conn.execute(
-        "SELECT value FROM metrics WHERE metric_type = 'cpu_usage' ORDER BY timestamp DESC LIMIT ?",
-        (limit,),
+        "SELECT value FROM metrics "
+        "WHERE metric_type = ? AND host = ? ORDER BY timestamp DESC LIMIT ?",
+        (metric_type, host, limit),
     ).fetchall()
     conn.close()
     return [row["value"] for row in reversed(rows)]
+
+
+def get_metric_history(host, metric_type="cpu_usage", limit=120):
+    """Get recent metrics with timestamps for a host."""
+    conn = get_conn(DB_METRICS)
+    rows = conn.execute(
+        "SELECT value, timestamp FROM metrics "
+        "WHERE metric_type = ? AND host = ? ORDER BY timestamp DESC LIMIT ?",
+        (metric_type, host, limit),
+    ).fetchall()
+    conn.close()
+    return [{"value": r["value"], "ts": r["timestamp"]} for r in reversed(rows)]
+
+
+def get_metric_hosts():
+    """List all hosts that have recorded metrics."""
+    conn = get_conn(DB_METRICS)
+    rows = conn.execute("SELECT DISTINCT host FROM metrics").fetchall()
+    conn.close()
+    return [r["host"] for r in rows]
 
 
 def get_alerts(limit=20):
@@ -212,6 +255,72 @@ def add_alert(severity: str, message: str):
     )
     conn.commit()
     conn.close()
+    try:
+        from ntfy_notify import notify_alert
+        notify_alert(message, severity)
+    except Exception:
+        pass
+
+
+ESCALATION_MINUTES = {
+    "high": 15,
+    "medium": 30,
+    "low": 60,
+}
+
+
+def escalate_alerts():
+    """Escalate unacked alerts that have exceeded their timeout.
+
+    low → medium, medium → high, high stays high.
+    Returns count of escalated alerts.
+    """
+    now = datetime.now(timezone.utc)
+    escalated = 0
+    conn = get_conn(DB_EVENTS)
+    rows = conn.execute(
+        "SELECT id, severity, timestamp FROM events WHERE acknowledged = 0 AND severity IN ('low', 'medium')"
+    ).fetchall()
+    for row in rows:
+        alert_id = row["id"]
+        severity = row["severity"]
+        try:
+            ts = datetime.fromisoformat(row["timestamp"])
+        except (ValueError, TypeError):
+            continue
+        timeout_min = ESCALATION_MINUTES.get(severity, 60)
+        age_min = (now - ts).total_seconds() / 60
+        if age_min >= timeout_min:
+            new_sev = "high" if severity == "medium" else "medium"
+            conn.execute(
+                "UPDATE events SET severity = ? WHERE id = ?",
+                (new_sev, alert_id),
+            )
+            escalated += 1
+    conn.commit()
+    conn.close()
+    return escalated
+
+
+def ack_alert(alert_id: int):
+    """Acknowledge an alert by id."""
+    conn = get_conn(DB_EVENTS)
+    conn.execute(
+        "UPDATE events SET acknowledged = 1 WHERE id = ? AND severity IN ('high', 'medium', 'low')",
+        (alert_id,),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_unacked_count():
+    """Count unacknowledged alerts."""
+    conn = get_conn(DB_EVENTS)
+    count = conn.execute(
+        "SELECT COUNT(*) FROM events WHERE severity IN ('high', 'medium', 'low') AND acknowledged = 0"
+    ).fetchone()[0]
+    conn.close()
+    return count
 
 
 def update_node_position(hostname: str, x: float, y: float):
@@ -225,29 +334,72 @@ def update_node_position(hostname: str, x: float, y: float):
     conn.close()
 
 
-def record_metric(metric_type: str, value: float):
-    """Record a new metric value."""
+def record_metric(metric_type: str, value: float, host: str = "local"):
+    """Record a new metric value for a host."""
     conn = get_conn(DB_METRICS)
     ts = datetime.now(timezone.utc).isoformat()
     conn.execute(
-        "INSERT INTO metrics (timestamp, metric_type, value) VALUES (?, ?, ?)",
-        (ts, metric_type, value),
+        "INSERT INTO metrics (timestamp, metric_type, value, host) VALUES (?, ?, ?, ?)",
+        (ts, metric_type, value, host),
     )
     conn.commit()
     conn.close()
-    # Keep only last 120 entries per metric type
+    # Keep only last 120 entries per metric type per host
     conn = get_conn(DB_METRICS)
     conn.execute("""
         DELETE FROM metrics
-        WHERE metric_type = ? AND id NOT IN (
+        WHERE metric_type = ? AND host = ? AND id NOT IN (
             SELECT id FROM metrics
-            WHERE metric_type = ?
+            WHERE metric_type = ? AND host = ?
             ORDER BY timestamp DESC
             LIMIT 120
         )
-    """, (metric_type, metric_type))
+    """, (metric_type, host, metric_type, host))
     conn.commit()
     conn.close()
+
+
+def get_anomalies(threshold_std: float = 2.0) -> list:
+    """Detect metric anomalies using standard deviation.
+
+    Returns list of {metric_type, value, expected, deviation, ts}
+    for values that exceed threshold_std standard deviations from the mean.
+    """
+    conn = get_conn(DB_METRICS)
+    rows = conn.execute(
+        "SELECT metric_type, value, timestamp FROM metrics ORDER BY timestamp DESC"
+    ).fetchall()
+    conn.close()
+
+    # Group by type
+    by_type: dict[str, list] = {}
+    for row in rows:
+        by_type.setdefault(row["metric_type"], []).append(
+            {"value": row["value"], "ts": row["timestamp"]}
+        )
+
+    anomalies = []
+    for mtype, entries in by_type.items():
+        if len(entries) < 5:
+            continue
+        values = [e["value"] for e in entries]
+        mean = sum(values) / len(values)
+        variance = sum((v - mean) ** 2 for v in values) / len(values)
+        std = variance ** 0.5
+        if std == 0:
+            continue
+        # Check the most recent entry
+        latest = entries[0]
+        deviation = (latest["value"] - mean) / std
+        if abs(deviation) > threshold_std:
+            anomalies.append({
+                "metric_type": mtype,
+                "value": latest["value"],
+                "expected": round(mean, 1),
+                "deviation": round(deviation, 2),
+                "ts": latest["ts"],
+            })
+    return anomalies
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +535,43 @@ def seed_demo_voice_events():
         "INSERT INTO voice_events (state, text, source, ts) VALUES (?, ?, ?, ?)",
         demo,
     )
+    conn.commit()
+    conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Inventory snapshots (used by drift/change detection)
+# ---------------------------------------------------------------------------
+def store_snapshot(host: str, kind: str, signature: str):
+    """Store the current service/port signature for a host."""
+    conn = get_conn(DB_METRICS)
+    ts = datetime.now(timezone.utc).isoformat()
+    conn.execute("""
+        INSERT INTO snapshots (host, kind, signature, ts) VALUES (?, ?, ?, ?)
+        ON CONFLICT(host, kind) DO UPDATE SET signature = excluded.signature, ts = excluded.ts
+    """, (host, kind, signature, ts))
+    conn.commit()
+    conn.close()
+
+
+def get_snapshot(host: str, kind: str):
+    """Get the last stored signature for a host+kind, or None."""
+    conn = get_conn(DB_METRICS)
+    row = conn.execute(
+        "SELECT signature, ts FROM snapshots WHERE host = ? AND kind = ?",
+        (host, kind),
+    ).fetchone()
+    conn.close()
+    return {"signature": row["signature"], "ts": row["ts"]} if row else None
+
+
+def clear_snapshot(host: str, kind: str | None = None):
+    """Clear snapshots for a host (optionally only one kind)."""
+    conn = get_conn(DB_METRICS)
+    if kind:
+        conn.execute("DELETE FROM snapshots WHERE host = ? AND kind = ?", (host, kind))
+    else:
+        conn.execute("DELETE FROM snapshots WHERE host = ?", (host,))
     conn.commit()
     conn.close()
 

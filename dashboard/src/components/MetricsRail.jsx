@@ -6,6 +6,31 @@ export default function MetricsRail({ metrics = [] }) {
     if (metrics.length > 0) return metrics.slice(-60);
     return Array.from({ length: 60 }, () => 50);
   });
+  const [liveCpu, setLiveCpu] = useState(null);
+  const [liveMem, setLiveMem] = useState(null);
+
+  // Fetch real metrics every 5s
+  useEffect(() => {
+    let cancelled = false;
+    const fetchMetrics = () => {
+      fetch('/api/metrics/realtime')
+        .then(r => r.json())
+        .then(d => {
+          if (cancelled) return;
+          setLiveCpu(d.cpu);
+          setLiveMem(d.memory);
+        })
+        .catch(() => {});
+    };
+    fetchMetrics();
+    const id = setInterval(fetchMetrics, 5000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  // Merge real metrics with any existing history
+  const effectiveHistory = liveCpu !== null
+    ? [...history.slice(-59), liveCpu]
+    : history;
 
   useEffect(() => {
     if (metrics.length > 0) {
@@ -34,13 +59,14 @@ export default function MetricsRail({ metrics = [] }) {
       ctx.stroke();
     }
 
-    if (history.length < 2) return;
+    const data = effectiveHistory;
+    if (data.length < 2) return;
 
-    const step = w / (history.length - 1);
+    const step = w / (data.length - 1);
 
     // phosphor fill
     ctx.beginPath();
-    history.forEach((v, i) => {
+    data.forEach((v, i) => {
       const x = i * step;
       const y = h - (v / 100) * h;
       if (i === 0) ctx.moveTo(x, y);
